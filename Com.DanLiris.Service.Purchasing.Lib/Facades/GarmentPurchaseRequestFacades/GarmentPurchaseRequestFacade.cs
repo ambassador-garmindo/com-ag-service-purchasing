@@ -240,7 +240,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentPurchaseRequestFaca
             DateTimeOffset now = m.Date.ToOffset(new TimeSpan(timeZone, 0, 0));
             string y = now.ToString("yy");
 
-            var unitCode = new List<string> { null, "C2A", "C2B", "C2C", "C1A", "C1B" }.IndexOf(m.UnitCode);
+            var unitCode = new List<string> { null, "C2A", "C2B", "C2C", "C1A", "C1B", "AG2" }.IndexOf(m.UnitCode);
             if (unitCode < 1)
             {
                 throw new Exception("UnitCode format is invalid when Generate RONo");
@@ -278,7 +278,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentPurchaseRequestFaca
             DateTimeOffset now = m.Date.ToOffset(new TimeSpan(timeZone, 0, 0));
             string y = now.ToString("yy");
 
-            var unitCode = new List<string> { null, "C2A", "C2B", "C2C", "C1A", "C1B" }.IndexOf(m.UnitCode);
+            var unitCode = new List<string> { null, "C2A", "C2B", "C2C", "C1A", "C1B", "AG2"}.IndexOf(m.UnitCode);
             if (unitCode < 1)
             {
                 throw new Exception("UnitCode format is invalid when Generate POSerialnumber");
