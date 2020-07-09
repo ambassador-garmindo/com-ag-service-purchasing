@@ -3124,11 +3124,6 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<bool>("Active");
 
-                    b.Property<string>("ApprovedOpenPOKadivMdBy")
-                        .HasMaxLength(100);
-
-                    b.Property<DateTimeOffset>("ApprovedOpenPOKadivMdDate");
-
                     b.Property<string>("ApprovedOpenPOMDBy")
                         .HasMaxLength(100);
 
@@ -3168,8 +3163,6 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<DateTime>("DeletedUtc");
 
                     b.Property<long>("GarmentPRId");
-
-                    b.Property<bool>("IsApprovedOpenPOKadivMd");
 
                     b.Property<bool>("IsApprovedOpenPOMD");
 
