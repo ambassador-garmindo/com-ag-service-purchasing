@@ -48,7 +48,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitDeliveryOrderFa
                 Query = Query.Where(x => x.CreatedBy == identityService.Username);
             }
 
-            Query = Query.Where(m=>m.UnitDOType != "RETUR").Select(m => new GarmentUnitDeliveryOrder
+            Query = Query.Where(m => m.UnitDOType != "RETUR").Select(m => new GarmentUnitDeliveryOrder
             {
                 Id = m.Id,
                 UnitDONo = m.UnitDONo,
@@ -66,12 +66,22 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitDeliveryOrderFa
                 RONo = m.RONo,
                 Article = m.Article,
                 CreatedBy = m.CreatedBy,
-                LastModifiedUtc = m.LastModifiedUtc
+                LastModifiedUtc = m.LastModifiedUtc,
+                UENFromNo=m.UENFromNo,
+                UENFromId=m.UENFromId,
+                Items = m.Items.Select(i => new GarmentUnitDeliveryOrderItem
+                {
+                    Id = i.Id,
+                    DesignColor = i.DesignColor,
+                    ProductId = i.ProductId,
+                    ProductCode = i.ProductCode,
+                    ProductName = i.ProductName
+                }).ToList()
             });
 
             List<string> searchAttributes = new List<string>()
             {
-                "UnitDONo", "RONo", "UnitDOType", "Article","UnitRequestName","StorageName"
+                "UnitDONo", "RONo", "UnitDOType", "Article","UnitRequestName","StorageName","UnitSenderName"
             };
 
             Query = QueryHelper<GarmentUnitDeliveryOrder>.ConfigureSearch(Query, searchAttributes, Keyword);
@@ -97,7 +107,9 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitDeliveryOrderFa
                 s.UnitRequestName,
                 s.StorageName,
                 s.CreatedBy,
-                s.LastModifiedUtc
+                s.LastModifiedUtc,
+                s.UnitSenderName,
+                s.Items
             }));
 
             return new ReadResponse<object>(ListData, TotalData, OrderDictionary);
@@ -131,6 +143,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitDeliveryOrderFa
 
                         GarmentUnitReceiptNote garmentUnitReceiptNote = dbContext.GarmentUnitReceiptNotes.Single(s => s.Id == garmentUnitDeliveryOrderItem.URNId);
                         garmentUnitDeliveryOrderItem.DOCurrencyRate = garmentUnitReceiptNote.DOCurrencyRate;
+                        garmentUnitReceiptNote.IsUnitDO = true;
 
                         GarmentUnitReceiptNoteItem garmentUnitReceiptNoteItem = dbContext.GarmentUnitReceiptNoteItems.Single(s => s.Id == garmentUnitDeliveryOrderItem.URNItemId);
                         EntityExtension.FlagForUpdate(garmentUnitReceiptNoteItem, identityService.Username, USER_AGENT);
@@ -201,7 +214,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitDeliveryOrderFa
                         .Include(d => d.Items)
                         //.AsNoTracking()
                         .Single(m => m.Id == id);
-
+                    if (oldGarmentUnitDeliveryOrder.UnitDOType == "MARKETING")
+                    {
+                        oldGarmentUnitDeliveryOrder.UnitDODate = garmentUnitDeliveryOrder.UnitDODate;
+                    }
                     EntityExtension.FlagForUpdate(oldGarmentUnitDeliveryOrder, identityService.Username, USER_AGENT);
 
                     foreach (var garmentUnitDeliveryOrderItem in garmentUnitDeliveryOrder.Items)
@@ -247,7 +263,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitDeliveryOrderFa
                         }
                     }
 
-                    //dbSet.Update(garmentUnitDeliveryOrder);
+                   // dbSet.Update(garmentUnitDeliveryOrder);
 
                     Updated = await dbContext.SaveChangesAsync();
                     transaction.Commit();
@@ -262,14 +278,16 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitDeliveryOrderFa
             return Updated;
         }
 
-        async Task<string> GenerateNo(GarmentUnitDeliveryOrder model)
+        public async Task<string> GenerateNo(GarmentUnitDeliveryOrder model)
         {
             DateTimeOffset dateTimeOffset = model.UnitDODate.ToOffset(new TimeSpan(identityService.TimezoneOffset, 0, 0));
             string Month = dateTimeOffset.ToString("MM");
             string Year = dateTimeOffset.ToString("yy");
             string Day = dateTimeOffset.ToString("dd");
 
-            string no = string.Concat("DO", model.UnitRequestCode, Year, Month, Day);
+            string pre = model.UnitDOType == "MARKETING" ? "DOM" : "DO";
+
+            string no = string.Concat(pre, model.UnitRequestCode, Year, Month, Day);
             int Padding = 3;
 
             var lastDataByNo = await dbSet.Where(w => w.UnitDONo.StartsWith(no) && !w.IsDeleted).OrderByDescending(o => o.UnitDONo).FirstOrDefaultAsync();
@@ -288,7 +306,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitDeliveryOrderFa
         public ReadResponse<object> ReadForUnitExpenditureNote(int Page = 1, int Size = 10, string Order = "{}", string Keyword = null, string Filter = "{}")
         {
             Dictionary<string, string> FilterDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Filter);
-            string unitDOType = "";
+            //string unitDOType = "";
             bool hasUnitDOTypeFilter = FilterDictionary.ContainsKey("UnitDOType");
             IQueryable<GarmentUnitDeliveryOrder> Query = dbSet
                 .Where(x => x.UnitDONo.Contains(Keyword ?? ""))

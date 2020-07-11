@@ -100,7 +100,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentBeacukaiFacade
 
 		}
 
-		public string GeneratePaymentBillNo()
+		public (string format, int counterId) GeneratePaymentBillNo()
 		{
 			string PaymentBill = null;
 			GarmentDeliveryOrder deliveryOrder = (from data in dbSetDeliveryOrder
@@ -114,9 +114,9 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentBeacukaiFacade
 			if (deliveryOrder.BillNo != null)
 			{
 				PaymentBill = deliveryOrder.PaymentBill;
-				string months = PaymentBill.Substring(4, 2);
+				string date = PaymentBill.Substring(2, 6);
 				string number = PaymentBill.Substring(8);
-				if (months == DateTimeOffset.Now.Month.ToString("D2"))
+				if (date == formatDate)
 				{
 					counterId = Convert.ToInt32(number) + 1;
 				}
@@ -129,9 +129,9 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentBeacukaiFacade
 			{
 				counterId = 1;
 			}
-			PaymentBill = "BB" + formatDate + counterId.ToString("D3");
+			//PaymentBill = "BB" + formatDate + counterId.ToString("D3");
 
-			return PaymentBill;
+			return (string.Concat("BB", formatDate), counterId);
 
 		}
 		public async Task<int> Create(GarmentBeacukai model, string username, int clientTimeZoneOffset = 7)
@@ -144,6 +144,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentBeacukaiFacade
 				{
 
 					EntityExtension.FlagForCreate(model, username, USER_AGENT);
+
+                    var lastPaymentBill = GeneratePaymentBillNo();
 
 					foreach (GarmentBeacukaiItem item in model.Items)
 					{
@@ -161,9 +163,9 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentBeacukaiFacade
 							{
 								deliveryOrder.BillNo = model.BillNo;
 							}
-							deliveryOrder.PaymentBill = GeneratePaymentBillNo();
-							//deliveryOrder.CustomsId = model.Id;
-							double qty = 0;
+                            deliveryOrder.PaymentBill = string.Concat(lastPaymentBill.format, (lastPaymentBill.counterId++).ToString("D3"));
+                            //deliveryOrder.CustomsId = model.Id;
+                            double qty = 0;
 							foreach (var deliveryOrderItem in deliveryOrder.Items)
 							{
 								foreach (var detail in deliveryOrderItem.Details)
@@ -253,27 +255,70 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentBeacukaiFacade
 			{
 				try
 				{
-					EntityExtension.FlagForUpdate(model, user, USER_AGENT);
-					foreach (GarmentBeacukaiItemViewModel itemViewModel in vm.items)
-					{
-						GarmentBeacukaiItem item = model.Items.FirstOrDefault(s => s.Id.Equals(itemViewModel.Id));
-						if (itemViewModel.selected == true)
-						{
-							EntityExtension.FlagForUpdate(item, user, USER_AGENT);
-						}
-						else
-						{
-							EntityExtension.FlagForDelete(item, user, USER_AGENT);
-							GarmentDeliveryOrder deleteDO = dbContext.GarmentDeliveryOrders.FirstOrDefault(s => s.Id == itemViewModel.deliveryOrder.Id);
-							deleteDO.BillNo = null;
-							deleteDO.PaymentBill = null;
-							deleteDO.CustomsId = 0;
-						}
+                    GarmentBeacukai modelBC = dbSet.AsNoTracking().Include(a=>a.Items).FirstOrDefault(s => s.Id == model.Id);
 
-					}
+                    EntityExtension.FlagForUpdate(model, user, USER_AGENT);
+
+                    var lastPaymentBill = GeneratePaymentBillNo();
+
+                    foreach(GarmentBeacukaiItem item in model.Items)
+                    {
+                        GarmentBeacukaiItem oldItem= modelBC.Items.FirstOrDefault(s => s.Id.Equals(item.Id));
+                        GarmentBeacukaiItemViewModel itemVM= vm.items.FirstOrDefault(s => s.deliveryOrder.Id.Equals(item.GarmentDOId));
+                        if (itemVM.selected)
+                        {
+                            if (oldItem == null)
+                            {
+                                GarmentDeliveryOrder deliveryOrder = dbSetDeliveryOrder.Include(m => m.Items)
+                                                            .ThenInclude(i => i.Details).FirstOrDefault(s => s.Id == item.GarmentDOId);
+                                if (deliveryOrder != null)
+                                {
+
+                                    if (model.BillNo == "" | model.BillNo == null)
+                                    {
+                                        deliveryOrder.BillNo = GenerateBillNo();
+
+                                    }
+                                    else
+                                    {
+                                        deliveryOrder.BillNo = model.BillNo;
+                                    }
+                                    deliveryOrder.PaymentBill = string.Concat(lastPaymentBill.format, (lastPaymentBill.counterId++).ToString("D3"));
+                                    //deliveryOrder.CustomsId = model.Id;
+                                    double qty = 0;
+                                    foreach (var deliveryOrderItem in deliveryOrder.Items)
+                                    {
+                                        foreach (var detail in deliveryOrderItem.Details)
+                                        {
+                                            qty += detail.DOQuantity;
+                                        }
+                                    }
+                                    item.TotalAmount = Convert.ToDecimal(deliveryOrder.TotalAmount);
+                                    item.TotalQty = qty;
+                                    EntityExtension.FlagForCreate(item, user, USER_AGENT);
+
+                                    deliveryOrder.CustomsId = model.Id;
+                                }
+                            }
+                            else if (oldItem != null)
+                            {
+                                EntityExtension.FlagForUpdate(item, user, USER_AGENT);
+                            }
 
 
-					this.dbSet.Update(model);
+                        }
+                        else
+                        {
+                            EntityExtension.FlagForDelete(item, user, USER_AGENT);
+                            GarmentDeliveryOrder deleteDO = dbContext.GarmentDeliveryOrders.FirstOrDefault(s => s.Id == item.GarmentDOId);
+                            deleteDO.BillNo = null;
+                            deleteDO.PaymentBill = null;
+                            deleteDO.CustomsId = 0;
+                        }
+                    }
+
+
+                    this.dbSet.Update(model);
 					Updated = await dbContext.SaveChangesAsync();
 					transaction.Commit();
 

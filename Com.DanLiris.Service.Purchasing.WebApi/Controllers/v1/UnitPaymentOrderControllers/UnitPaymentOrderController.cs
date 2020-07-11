@@ -156,6 +156,30 @@ namespace Com.DanLiris.Service.Purchasing.WebApi.Controllers.v1.UnitPaymentOrder
             }
         }
 
+        [HttpGet("EPO/{epo}")]
+        public IActionResult GetEpo(string epo)
+        {
+            try
+            {
+                var model = facade.ReadByEPONo(epo);
+                var viewModel = mapper.Map<List<UnitPaymentOrderViewModel>>(model);
+                if (viewModel == null)
+                {
+                    throw new Exception("Invalid Id");
+                }
+                Dictionary<string, object> Result =
+                   new ResultFormatter(ApiVersion, General.OK_STATUS_CODE, General.OK_MESSAGE)
+                   .Ok(viewModel);
+                return Ok(Result);
+            }
+            catch (Exception e)
+            {
+                Dictionary<string, object> Result =
+                    new ResultFormatter(ApiVersion, General.INTERNAL_ERROR_STATUS_CODE, e.Message)
+                    .Fail();
+                return StatusCode(General.INTERNAL_ERROR_STATUS_CODE, Result);
+            }
+        }
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] UnitPaymentOrderViewModel viewModel)
         {
@@ -198,6 +222,7 @@ namespace Com.DanLiris.Service.Purchasing.WebApi.Controllers.v1.UnitPaymentOrder
         public async Task<IActionResult> Put([FromRoute]int id, [FromBody]UnitPaymentOrderViewModel vm)
         {
             identityService.Username = User.Claims.Single(p => p.Type.Equals("username")).Value;
+            identityService.Token = Request.Headers["Authorization"].FirstOrDefault().Replace("Bearer ", "");
 
             UnitPaymentOrder m = mapper.Map<UnitPaymentOrder>(vm);
 
@@ -233,6 +258,7 @@ namespace Com.DanLiris.Service.Purchasing.WebApi.Controllers.v1.UnitPaymentOrder
         public async Task<IActionResult> Delete([FromRoute]int id)
         {
             identityService.Username = User.Claims.Single(p => p.Type.Equals("username")).Value;
+            identityService.Token = Request.Headers["Authorization"].FirstOrDefault().Replace("Bearer ", "");
 
             try
             {
@@ -271,6 +297,73 @@ namespace Com.DanLiris.Service.Purchasing.WebApi.Controllers.v1.UnitPaymentOrder
                     s.useIncomeTax,
                     s.useVat,
                     s.vatNo,
+                    s.vatDate,
+                    s.remark,
+                    s.dueDate,
+                    s.date,
+                    s.no,
+                    items = s.items.Select(i => new
+                    {
+                        unitReceiptNote = new
+                        {
+                            i.unitReceiptNote._id,
+                            i.unitReceiptNote.no,
+                            i.unitReceiptNote.deliveryOrder,
+                            i.unitReceiptNote.items
+                        }
+                    }),
+                    s.LastModifiedUtc,
+                }));
+
+                return Ok(new
+                {
+                    apiVersion = ApiVersion,
+                    statusCode = General.OK_STATUS_CODE,
+                    message = General.OK_MESSAGE,
+                    data = listData,
+                    info = new Dictionary<string, object>
+                    {
+                        { "count", listData.Count },
+                        { "total", Data.Item2 },
+                        { "order", Data.Item3 },
+                        { "page", page },
+                        { "size", size }
+                    },
+                });
+            }
+            catch (Exception e)
+            {
+                Dictionary<string, object> Result =
+                    new ResultFormatter(ApiVersion, General.INTERNAL_ERROR_STATUS_CODE, e.Message)
+                    .Fail();
+                return StatusCode(General.INTERNAL_ERROR_STATUS_CODE, Result);
+            }
+        }
+
+        [HttpGet("spb-for-verification")]
+        public IActionResult GetSpbForVerification(int page = 1, int size = 25, string order = "{}", string keyword = null, string filter = "{}")
+        {
+            try
+            {
+                var Data = facade.ReadSpbForVerification(page, size, order, keyword, filter);
+                var newData = mapper.Map<List<UnitPaymentOrderViewModel>>(Data.Item1);
+
+                List<object> listData = new List<object>();
+                listData.AddRange(newData.AsQueryable().Select(s => new
+                {
+                    s._id,
+                    s.supplier,
+                    s.division,
+                    s.category,
+                    s.currency,
+                    s.paymentMethod,
+                    s.invoiceDate,
+                    s.invoiceNo,
+                    s.pibNo,
+                    s.useIncomeTax,
+                    s.useVat,
+                    s.vatNo,
+                    s.incomeTax,
                     s.vatDate,
                     s.remark,
                     s.dueDate,

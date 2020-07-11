@@ -81,7 +81,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.GarmentBeacukaiTests
 		}
 		private GarmentBeacukaiDataUtil dataUtil(GarmentBeacukaiFacade facade, string testName)
 		{
-			var garmentPurchaseRequestFacade = new GarmentPurchaseRequestFacade(_dbContext(testName));
+			var garmentPurchaseRequestFacade = new GarmentPurchaseRequestFacade(ServiceProvider, _dbContext(testName));
 			var garmentPurchaseRequestDataUtil = new GarmentPurchaseRequestDataUtil(garmentPurchaseRequestFacade);
 
 			var garmentInternalPurchaseOrderFacade = new GarmentInternalPurchaseOrderFacade(_dbContext(testName));
@@ -102,7 +102,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.GarmentBeacukaiTests
 			GarmentBeacukai data = await dataUtil(facade, GetCurrentMethod()).GetNewData(USERNAME);
 
 			var Response = await facade.Create(data, USERNAME);
-			Assert.NotEqual(Response, 0);
+			Assert.NotEqual(0, Response);
 		}
 		[Fact]
 		public async Task Should_Success_Create_Data_null_BillNo()
@@ -112,7 +112,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.GarmentBeacukaiTests
 			GarmentBeacukai data = await dataUtil(facade, GetCurrentMethod()).GetNewData(USERNAME);
 			data.BillNo = "";
 			var Response = await facade.Create(data, USERNAME);
-			Assert.NotEqual(Response, 0);
+			Assert.NotEqual(0, Response);
 		}
 
 		//[Fact]
@@ -176,24 +176,46 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.GarmentBeacukaiTests
 	{
 			var facade = new GarmentBeacukaiFacade(_dbContext(GetCurrentMethod()), ServiceProvider);
 			var facadeDO = new GarmentDeliveryOrderFacade(ServiceProvider, _dbContext(GetCurrentMethod()));
-			GarmentBeacukai data = await dataUtil(facade, GetCurrentMethod()).GetNewData(USERNAME);
-			GarmentBeacukaiViewModel viewModel = await dataUtil(facade, GetCurrentMethod()).GetViewModel(USERNAME);
 
-			//var ResponseUpdate = await facade.Update((int)data.Id, viewModel,data, USERNAME);
-			//Assert.NotEqual(ResponseUpdate, 0);
-			var newItem =
-				new GarmentBeacukaiItemViewModel
-				{
-					selected = true 
-				};
-   			
-			List<GarmentBeacukaiItemViewModel> Newitems = new List<GarmentBeacukaiItemViewModel>(viewModel.items);
-			Newitems.Add(newItem);
-			viewModel.items = Newitems;
-			//List<GarmentBeacukaiItem> Newitems = new List<GarmentBeacukaiItem>(data.Items);
+			GarmentBeacukai data = await dataUtil(facade, GetCurrentMethod()).GetTestData1(USERNAME);
+
+            GarmentBeacukaiViewModel viewModel = await dataUtil(facade, GetCurrentMethod()).GetViewModel(USERNAME);
+            
+            var newModelItem = new GarmentBeacukaiItem
+            {
+                GarmentDOId= viewModel.items.First().deliveryOrder.Id,
+                TotalQty=1,
+                TotalAmount=1
+            };
+            data.Items.Add(newModelItem);
+
+            List<GarmentBeacukaiItemViewModel> Newitems = new List<GarmentBeacukaiItemViewModel>();
+			
+
+            foreach(GarmentBeacukaiItem i in data.Items)
+            {
+                var newItem =
+                new GarmentBeacukaiItemViewModel
+                {
+                    selected = true,
+                    deliveryOrder = new Lib.ViewModels.GarmentDeliveryOrderViewModel.GarmentDeliveryOrderViewModel
+                    {
+                        Id= i.GarmentDOId,
+                    },
+                    Id=i.Id,
+                };
+                Newitems.Add(newItem);
+            }
+
+            viewModel.Id = data.Id;
+            viewModel.items = Newitems;
+			
 			var ResponseUpdate1 = await facade.Update((int)data.Id, viewModel, data, USERNAME);
-			Assert.NotEqual(ResponseUpdate1, 0);
-		}
+			Assert.NotEqual(0, ResponseUpdate1);
+
+            var ResponseUpdate2 = await facade.Update((int)data.Id, viewModel, data, USERNAME);
+            Assert.NotEqual(0, ResponseUpdate2);
+        }
 
 		[Fact]
 		public async Task Should_Success_Delete_Data()
@@ -202,13 +224,13 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.GarmentBeacukaiTests
 			GarmentBeacukai data = await dataUtil(facade, GetCurrentMethod()).GetNewData(USERNAME);
 			await facade.Create(data, USERNAME);
 			var Response = facade.Delete((int)data.Id, USERNAME);
-			Assert.NotEqual(Response, 0);
+			Assert.NotEqual(0, Response);
 		}
 		[Fact]
-		public async Task Should_Error_Delete_Data()
+		public void Should_Error_Delete_Data()
 		{
 			var facade = new GarmentBeacukaiFacade(_dbContext(GetCurrentMethod()), ServiceProvider);
-			Exception e = await Assert.ThrowsAsync<Exception>(async () => facade.Delete(0, USERNAME));
+			Exception e = Assert.Throws<Exception>(() => facade.Delete(0, USERNAME));
 			Assert.NotNull(e.Message);
 		}
 		[Fact]

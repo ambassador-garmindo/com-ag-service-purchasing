@@ -21,9 +21,9 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.MonitoringUnitReceipt
 	[Collection("TestServerFixture Collection")]
 	public class MonitoringUnitReceiptAllControllerTest
 	{
-		private const string MediaType = "application/json";
-		private readonly string URI = "v1/unit-receipt-note-monitoring-all";
-		private readonly string USERNAME = "dev2";
+		//private const string MediaType = "application/json";
+		//private readonly string URI = "v1/unit-receipt-note-monitoring-all";
+		//private readonly string USERNAME = "dev2";
 		private TestServerFixture TestFixture { get; set; }
 		private MonitoringUnitReceiptAll ViewModel
 		{
@@ -162,7 +162,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.MonitoringUnitReceipt
 			};
 			controller.ControllerContext.HttpContext.Request.Headers["x-timezone-offset"] = "0";
 			var response = controller.GetXls(null, null, null, null, null, null, null, null, 1, 25, "{}");
-			Assert.Equal(null, response.GetType().GetProperty("FileStream"));
+			Assert.Null(response.GetType().GetProperty("FileStream"));
 		}
 
 		//[Fact]

@@ -45,7 +45,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
             PdfPCell cellHeaderContentLeft = new PdfPCell() { Border = Rectangle.NO_BORDER, HorizontalAlignment = Element.ALIGN_LEFT };
             PdfPCell cellHeaderContentRight = new PdfPCell() { Border = Rectangle.NO_BORDER, HorizontalAlignment = Element.ALIGN_RIGHT };
 
-            cellHeaderContentLeft.Phrase = new Phrase("PT DAN LIRIS" + "\n" + "Head Office: Kelurahan Banaran" + "\n" + "Kecamatan Grogol" + "\n" + "Sukoharjo 57193 - INDONESIA" + "\n" + "PO.BOX 166 Solo 57100" + "\n" + "Telp. (0271) 740888, 714400" + "\n" + "Fax. (0271) 735222, 740777", bold_font);
+            cellHeaderContentLeft.Phrase = new Phrase("PT AMBASSADOR GARMINDO" + "\n" + "Kelurahan Banaran" + "\n" + "Kecamatan Grogol" + "\n" + "Sukoharjo 57193 - INDONESIA" + "\n" + "PO BOX 166 Solo 57100" + "\n" + "Telp. (0271) 714400, 7652913" + "\n" + "Fax. (0271) 735222, 740777", bold_font);
             tableHeader.AddCell(cellHeaderContentLeft);
 
             string noPO = EPONo;
@@ -130,7 +130,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
 
             if (viewModel.Supplier.Import)
             {
-                string p1 = "The undersigned below, PT. DAN LIRIS, SOLO (hereinafter referred to as parties Purchasers) and " + viewModel.Supplier.Name + " (hereinafter referred to as seller\'s side) mutually agreed to enter into a sale and purchase contract with the following conditions: ";
+                string p1 = "The undersigned below, PT. AMBASSADOR GARMINDO, SOLO (hereinafter referred to as parties Purchasers) and " + viewModel.Supplier.Name + " (hereinafter referred to as seller\'s side) mutually agreed to enter into a sale and purchase contract with the following conditions: ";
                 Paragraph firstParagraph = new Paragraph(p1, normal_font) { Alignment = Element.ALIGN_LEFT };
 
                 firstParagraph.SpacingAfter = 10f;
@@ -138,7 +138,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
             }
             else
             {
-                string p1 = "Dengan hormat,\nYang bertanda tangan di bawah ini, PT. DAN LIRIS, SOLO (selanjutnya disebut sebagai pihak Pembeli) dan " + viewModel.Supplier.Name + " (selanjutnya disebut sebagai pihak Penjual) saling menyetujui untuk mengadakan kontrak jual beli dengan ketentuan sebagai berikut: ";
+                string p1 = "Dengan hormat,\nYang bertanda tangan di bawah ini, PT. AMBASSADOR GARMINDO, SOLO (selanjutnya disebut sebagai pihak Pembeli) dan " + viewModel.Supplier.Name + " (selanjutnya disebut sebagai pihak Penjual) saling menyetujui untuk mengadakan kontrak jual beli dengan ketentuan sebagai berikut: ";
                 Paragraph firstParagraph = new Paragraph(p1, normal_font) { Alignment = Element.ALIGN_LEFT };
 
                 firstParagraph.SpacingAfter = 10f;

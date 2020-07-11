@@ -22,7 +22,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentBeacukaiViewMode
 		public double bruto { get; set; }
 		public double netto { get; set; }
 		public CurrencyViewModel currency{ get; set; }
-		public List<GarmentBeacukaiItemViewModel> items { get; set; }
+        public DateTimeOffset? arrivalDate { get; set; }
+        public List<GarmentBeacukaiItemViewModel> items { get; set; }
 		public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
 		{
 			if (string.IsNullOrWhiteSpace(beacukaiNo))
@@ -42,10 +43,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentBeacukaiViewMode
 			{
 				yield return new ValidationResult("Date is required", new List<string> { "beacukaiDate" });
 			}
-			if (validationDate.Equals(DateTimeOffset.MinValue) || beacukaiDate == null)
-			{
-				yield return new ValidationResult("Validate Date is required", new List<string> { "validationDate" });
-			}
+			//if (validationDate.Equals(DateTimeOffset.MinValue) || beacukaiDate == null)
+			//{
+			//	yield return new ValidationResult("Validate Date is required", new List<string> { "validationDate" });
+			//}
 			if (currency == null )
 			{
 				yield return new ValidationResult("Currency is required", new List<string> { "currency" });

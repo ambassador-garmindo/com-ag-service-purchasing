@@ -57,7 +57,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
 
             #region Header
 
-            string addressString = "PT DAN LIRIS" + "\n" + "Head Office: Kelurahan Banaran" + "\n" + "Kecamatan Grogol" + "\n" + "Sukoharjo 57193 - INDONESIA" + "\n" + "PO.BOX 166 Solo 57100" + "\n" + "Telp. (0271) 740888, 714400" + "\n" + "Fax. (0271) 735222, 740777";
+            string addressString = "PT AMBASSADOR GARMINDO" + "\n" + "Kelurahan Banaran" + "\n" + "Kecamatan Grogol" + "\n" + "Sukoharjo 57193 - INDONESIA" + "\n" + "PO.BOX 166 Solo 57100" + "\n" + "Telp. (0271) 714400, 7652913" + "\n" + "Fax. (0271) 735222, 740777";
             Paragraph address = new Paragraph(addressString, bold_font) { Alignment = Element.ALIGN_LEFT };
             document.Add(address);
             bold_font.SetStyle(Font.NORMAL);
@@ -91,7 +91,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
                     paymentmethods = detail.deliveryOrder.paymentMethod;
                 }
             }
-            DateTimeOffset coba1 = coba.Max(p => p);
+            DateTimeOffset coba1 = coba.Min(p => p);
             cellInternNoteHeaderRight.Phrase = new Phrase("Tanggal Jatuh Tempo" + "    : " + coba1.ToOffset(new TimeSpan(clientTimeZoneOffset, 0, 0)).ToString("dd MMMM yyyy", new CultureInfo("id-ID")), normal_font);
             tableInternNoteHeader.AddCell(cellInternNoteHeaderRight);
 
@@ -181,11 +181,11 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
                         units.Add(detail.unit.Code, detail.priceTotal);
                     }
 
-                    if (item.garmentInvoice.useVat == true && item.garmentInvoice.isPayTax == true)
+                    if (item.garmentInvoice.useVat == true && item.garmentInvoice.isPayVat == true)
                     {
                         ppn = 0.1 * totalPriceTotal;
                     }
-                    else if (item.garmentInvoice.isPayTax == false)
+                    else if (item.garmentInvoice.isPayVat == false)
                     {
                         ppn = 0;
                     }

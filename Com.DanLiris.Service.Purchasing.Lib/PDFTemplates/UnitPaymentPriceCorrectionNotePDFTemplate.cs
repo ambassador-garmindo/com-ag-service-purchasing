@@ -58,7 +58,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
                 PdfPCell cellHeaderContentRight = new PdfPCell() { Border = Rectangle.NO_BORDER, HorizontalAlignment = Element.ALIGN_RIGHT };
                 PdfPCell cellHeaderContentCenter = new PdfPCell() { Border = Rectangle.NO_BORDER, HorizontalAlignment = Element.ALIGN_CENTER };
 
-                cellHeaderContentLeft.Phrase = new Phrase("PT DAN LIRIS", bold_font);
+                cellHeaderContentLeft.Phrase = new Phrase("PT. AMBASSADOR GARMINDO", bold_font);
                 tableHeader.AddCell(cellHeaderContentLeft);
 
                 cellHeaderContentCenter.Phrase = new Phrase("NOTA KOREKSI", bold_font);
@@ -73,7 +73,9 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
                 cellHeaderContentCenter.Phrase = new Phrase("");
                 tableHeader.AddCell(cellHeaderContentCenter);
 
-                cellHeaderContentLeft.Phrase = new Phrase("FM-PB-00-06-015/R2", terbilang_bold_font);
+                //cellHeaderContentLeft.Phrase = new Phrase("FM-PB-00-06-015/R2", terbilang_bold_font);
+                //tableHeader.AddCell(cellHeaderContentLeft);
+                cellHeaderContentLeft.Phrase = new Phrase("");
                 tableHeader.AddCell(cellHeaderContentLeft);
 
                 cellHeaderContentLeft.Phrase = new Phrase("");

@@ -25,6 +25,8 @@ using Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitReceiptNoteModel;
 using Com.DanLiris.Service.Purchasing.Lib.Models.GarmentInventoryModel;
 using Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitDeliveryOrderModel;
 using Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitExpenditureNoteModel;
+using Com.DanLiris.Service.Purchasing.Lib.Models.GarmentReceiptCorrectionModel;
+using Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentPOMasterDistributionModels;
 
 namespace Com.DanLiris.Service.Purchasing.Lib
 {
@@ -45,6 +47,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib
 
         public DbSet<InternalPurchaseOrder> InternalPurchaseOrders { get; set; }
         public DbSet<InternalPurchaseOrderItem> InternalPurchaseOrderItems { get; set; }
+        public DbSet<InternalPurchaseOrderFulFillment> InternalPurchaseOrderFulfillments { get; set; }
+        public DbSet<InternalPurchaseOrderCorrection> InternalPurchaseOrderCorrections { get; set; }
 
         public DbSet<ExternalPurchaseOrder> ExternalPurchaseOrders { get; set; }
         public DbSet<ExternalPurchaseOrderItem> ExternalPurchaseOrderItems { get; set; }
@@ -109,6 +113,13 @@ namespace Com.DanLiris.Service.Purchasing.Lib
         public DbSet<GarmentUnitExpenditureNote> GarmentUnitExpenditureNotes { get; set; }
         public DbSet<GarmentUnitExpenditureNoteItem> GarmentUnitExpenditureNoteItems { get; set; }
 
+        public DbSet<GarmentReceiptCorrection> GarmentReceiptCorrections { get; set; }
+        public DbSet<GarmentReceiptCorrectionItem> GarmentReceiptCorrectionItems { get; set; }
+
+        public DbSet<GarmentPOMasterDistribution> GarmentPOMasterDistributions { get; set; }
+        public DbSet<GarmentPOMasterDistributionItem> GarmentPOMasterDistributionItems { get; set; }
+        public DbSet<GarmentPOMasterDistributionDetail> GarmentPOMasterDistributionDetails { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -119,6 +130,80 @@ namespace Com.DanLiris.Service.Purchasing.Lib
             {
                 relationship.DeleteBehavior = DeleteBehavior.Restrict;
             }
+
+            modelBuilder.Entity<GarmentPurchaseRequest>()
+                .HasIndex(i => i.PRNo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
+
+            modelBuilder.Entity<GarmentPurchaseRequest>()
+                .HasIndex(i => i.RONo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
+
+            modelBuilder.Entity<GarmentExternalPurchaseOrder>()
+                .HasIndex(i => i.EPONo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
+
+            modelBuilder.Entity<GarmentInternNote>()
+                .HasIndex(i => i.INNo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
+
+            modelBuilder.Entity<GarmentUnitReceiptNote>()
+                .HasIndex(i => i.URNNo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-04 00:00:00.0000000')");
+
+            modelBuilder.Entity<GarmentReceiptCorrection>()
+                .HasIndex(i => i.CorrectionNo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
+
+            modelBuilder.Entity<GarmentUnitDeliveryOrder>()
+                .HasIndex(i => i.UnitDONo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
+
+            modelBuilder.Entity<GarmentUnitExpenditureNote>()
+                .HasIndex(i => i.UENNo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
+
+            modelBuilder.Entity<GarmentCorrectionNote>()
+                .HasIndex(i => i.CorrectionNo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
+
+            #region Purchasing
+
+            modelBuilder.Entity<PurchaseRequest>()
+                .HasIndex(i => i.No)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2020-02-01 00:00:00.0000000')");
+
+            modelBuilder.Entity<ExternalPurchaseOrder>()
+                .HasIndex(i => i.EPONo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2020-02-01 00:00:00.0000000')");
+
+            modelBuilder.Entity<UnitReceiptNote>()
+                .HasIndex(i => i.URNNo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2020-02-01 00:00:00.0000000')");
+
+            modelBuilder.Entity<UnitPaymentOrder>()
+                .HasIndex(i => i.UPONo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2020-02-01 00:00:00.0000000')");
+
+            modelBuilder.Entity<UnitPaymentCorrectionNote>()
+                .HasIndex(i => i.UPCNo)
+                .IsUnique()
+                .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2020-02-01 00:00:00.0000000')");
+
+            #endregion
         }
     }
 }

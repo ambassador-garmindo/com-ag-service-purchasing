@@ -13,6 +13,7 @@ using Com.DanLiris.Service.Purchasing.Test.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Moq;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -90,7 +91,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
             BankExpenditureNoteFacade facade = new BankExpenditureNoteFacade(_dbContext(GetCurrentMethod()), numberGeneratorMock.Object, GetServiceProviderMock().Object);
             await _dataUtil(facade, GetCurrentMethod()).GetTestData();
             ReadResponse<object> Response = facade.Read();
-            Assert.NotEqual(Response.Data.Count, 0);
+            Assert.NotEmpty(Response.Data);
         }
 
         [Fact]
@@ -101,8 +102,14 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
             _dataUtil(facade, GetCurrentMethod());
             PurchasingDocumentExpedition model = await pdaDataUtil.GetCashierTestData();
 
-            var Response = facade.GetAllByPosition(1, 25, "{}", null, "{}");
-            Assert.NotEqual(Response.Data.Count, 0);
+            var filter = new
+            {
+                model.Currency
+            };
+            var filterJson = JsonConvert.SerializeObject(filter);
+
+            var Response = facade.GetAllByPosition(1, 25, "{}", model.UnitPaymentOrderNo, filterJson);
+            Assert.NotEmpty(Response.Data);
         }
 
         [Fact]
@@ -129,7 +136,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
                 Username = "Unit Test"
             };
             var Response = await facade.Create(model, identityService);
-            Assert.NotEqual(Response, 0);
+            Assert.NotEqual(0, Response);
         }
 
         [Fact]
@@ -146,7 +153,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
                 Username = "Unit Test"
             };
             var Response = await facade.Create(model, identityService);
-            Assert.NotEqual(Response, 0);
+            Assert.NotEqual(0, Response);
         }
 
         [Fact]
@@ -165,7 +172,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
             model.Details.Clear();
             model.Details.Add(modelDetail);
             var Response = await facade.Update((int)model.Id, model, identityService);
-            Assert.NotEqual(Response, 0);
+            Assert.NotEqual(0, Response);
         }
 
         [Fact]
@@ -219,7 +226,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
 
             ReadResponse<object> response = facade.GetReport(1, 25, null, null, null, null, null, null, null, null, 0);
 
-            Assert.NotEqual(null, response);
+            Assert.NotNull(response);
         }
 
         [Fact]
@@ -229,7 +236,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
             BankExpenditureNoteFacade facade = new BankExpenditureNoteFacade(_dbContext(GetCurrentMethod()), numberGeneratorMock.Object, GetServiceProviderMock().Object);
             ReadResponse<object> response = facade.GetReport(1, 25, "", "", "", "", null, null, null, null, 0);
 
-            Assert.NotEqual(null, response);
+            Assert.NotNull(response);
         }
 
         [Fact]
@@ -239,7 +246,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
             BankExpenditureNoteFacade facade = new BankExpenditureNoteFacade(_dbContext(GetCurrentMethod()), numberGeneratorMock.Object, GetServiceProviderMock().Object);
             ReadResponse<object> response = facade.GetReport(1, 25, null, null, null, null, null, null, new DateTimeOffset(), new DateTimeOffset(), 0);
 
-            Assert.NotEqual(null, response);
+            Assert.NotNull(response);
         }
 
         [Fact]
@@ -249,7 +256,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
             BankExpenditureNoteFacade facade = new BankExpenditureNoteFacade(_dbContext(GetCurrentMethod()), numberGeneratorMock.Object, GetServiceProviderMock().Object);
             ReadResponse<object> response = facade.GetReport(1, 25, "", "", "", "", null, null, new DateTimeOffset(), new DateTimeOffset(), 0);
 
-            Assert.NotEqual(null, response);
+            Assert.NotNull(response);
         }
 
         [Fact]
@@ -272,7 +279,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
                 VAT = 0
             };
 
-            Assert.NotEqual(null, reportViewModel);
+            Assert.NotNull(reportViewModel);
         }
 
         [Fact]
@@ -289,7 +296,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
                 Username = "Unit Test"
             };
             var Response = await facade.Create(model, identityService);
-            Assert.NotEqual(Response, 0);
+            Assert.NotEqual(0, Response);
         }
 
         [Fact]
@@ -300,7 +307,26 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.BankExpenditureNoteTest
             BankExpenditureNoteFacade facade = new BankExpenditureNoteFacade(_dbContext(GetCurrentMethod()), numberGeneratorMock.Object, GetServiceProviderMock().Object);
             var result = await _dataUtil(facade, GetCurrentMethod()).GetTestData();
             var Response = facade.GetByPeriod(result.Date.Month, result.Date.Year, 0);
-            Assert.NotEqual(Response.Count, 0);
+            Assert.NotEmpty(Response);
+
+            var Response2 = facade.GetByPeriod(0, 0, 0);
+            Assert.NotEmpty(Response2);
+        }
+
+        [Fact]
+        public void Should_Success_InitiateExpenditureInfo()
+        {
+            var expenditureInfo = new ExpenditureInfo()
+            {
+                BankName = "",
+                BGCheckNumber = "",
+                DocumentNo = ""
+            };
+
+            Assert.NotNull(expenditureInfo);
+            Assert.True(string.IsNullOrWhiteSpace(expenditureInfo.BankName));
+            Assert.True(string.IsNullOrWhiteSpace(expenditureInfo.BGCheckNumber));
+            Assert.True(string.IsNullOrWhiteSpace(expenditureInfo.DocumentNo));
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "2.0.1-rtm-125")
+                .HasAnnotation("ProductVersion", "2.0.3-rtm-10026")
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
             modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.BankDocumentNumber.BankDocumentNumber", b =>
@@ -266,14 +266,12 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<string>("BankCurrencyCode")
                         .HasMaxLength(255);
 
-                    b.Property<string>("BankCurrencyId")
-                        .HasMaxLength(255);
+                    b.Property<int>("BankCurrencyId");
 
                     b.Property<string>("BankCurrencyRate")
                         .HasMaxLength(255);
 
-                    b.Property<string>("BankId")
-                        .HasMaxLength(255);
+                    b.Property<int>("BankId");
 
                     b.Property<string>("BankName");
 
@@ -286,6 +284,13 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                         .HasMaxLength(255);
 
                     b.Property<DateTime>("CreatedUtc");
+
+                    b.Property<string>("CurrencyCode")
+                        .HasMaxLength(255);
+
+                    b.Property<int>("CurrencyId");
+
+                    b.Property<double>("CurrencyRate");
 
                     b.Property<DateTimeOffset>("Date");
 
@@ -319,8 +324,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<string>("SupplierCode")
                         .HasMaxLength(255);
 
-                    b.Property<string>("SupplierId")
-                        .HasMaxLength(255);
+                    b.Property<int>("SupplierId");
 
                     b.Property<bool>("SupplierImport");
 
@@ -996,6 +1000,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EPONo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2020-02-01 00:00:00.0000000')");
+
                     b.ToTable("ExternalPurchaseOrders");
                 });
 
@@ -1161,6 +1169,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                         .ValueGeneratedOnAdd();
 
                     b.Property<bool>("Active");
+
+                    b.Property<DateTimeOffset?>("ArrivalDate");
 
                     b.Property<long>("BCIdTemp");
 
@@ -1380,6 +1390,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<bool>("UseVat");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CorrectionNo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
 
                     b.ToTable("GarmentCorrectionNotes");
                 });
@@ -1881,6 +1895,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<string>("SupplierName")
                         .HasMaxLength(255);
 
+                    b.Property<long?>("UENId");
+
                     b.Property<string>("UId")
                         .HasMaxLength(255);
 
@@ -1891,6 +1907,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                         .HasMaxLength(1000);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EPONo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
 
                     b.ToTable("GarmentExternalPurchaseOrders");
                 });
@@ -1996,6 +2016,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<int>("SmallUomId");
 
                     b.Property<string>("SmallUomUnit");
+
+                    b.Property<long?>("UENItemId");
 
                     b.Property<string>("UId")
                         .HasMaxLength(255);
@@ -2223,7 +2245,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<DateTimeOffset>("INDate");
 
-                    b.Property<string>("INNo");
+                    b.Property<string>("INNo")
+                        .HasMaxLength(255);
 
                     b.Property<bool>("IsDeleted");
 
@@ -2253,6 +2276,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("INNo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
+
                     b.ToTable("GarmentInternNotes");
                 });
 
@@ -2277,7 +2304,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<long>("DOId");
 
-                    b.Property<string>("DONo");
+                    b.Property<string>("DONo")
+                        .HasMaxLength(255);
 
                     b.Property<string>("DeletedAgent")
                         .IsRequired()
@@ -2291,7 +2319,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<long>("EPOId");
 
-                    b.Property<string>("EPONo");
+                    b.Property<string>("EPONo")
+                        .HasMaxLength(255);
 
                     b.Property<long>("GarmentItemINId");
 
@@ -2309,15 +2338,18 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<DateTime>("LastModifiedUtc");
 
-                    b.Property<string>("POSerialNumber");
+                    b.Property<string>("POSerialNumber")
+                        .HasMaxLength(255);
 
                     b.Property<DateTimeOffset>("PaymentDueDate");
 
                     b.Property<int>("PaymentDueDays");
 
-                    b.Property<string>("PaymentMethod");
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(255);
 
-                    b.Property<string>("PaymentType");
+                    b.Property<string>("PaymentType")
+                        .HasMaxLength(255);
 
                     b.Property<double>("PricePerDealUnit");
 
@@ -2334,11 +2366,13 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<double>("Quantity");
 
-                    b.Property<string>("RONo");
+                    b.Property<string>("RONo")
+                        .HasMaxLength(255);
 
                     b.Property<long?>("UOMId");
 
-                    b.Property<string>("UOMUnit");
+                    b.Property<string>("UOMUnit")
+                        .HasMaxLength(255);
 
                     b.Property<string>("UnitCode")
                         .HasMaxLength(255);
@@ -2768,6 +2802,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<bool>("IsPayTax");
 
+                    b.Property<bool>("IsPayVat");
+
                     b.Property<string>("LastModifiedAgent")
                         .IsRequired()
                         .HasMaxLength(255);
@@ -2997,6 +3033,14 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<bool>("IsUsed");
 
+                    b.Property<bool>("IsValidated");
+
+                    b.Property<bool>("IsValidatedMD1");
+
+                    b.Property<bool>("IsValidatedMD2");
+
+                    b.Property<bool>("IsValidatedPurchasing");
+
                     b.Property<string>("LastModifiedAgent")
                         .IsRequired()
                         .HasMaxLength(255);
@@ -3010,9 +3054,21 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<string>("PRNo")
                         .HasMaxLength(255);
 
-                    b.Property<string>("RONo");
+                    b.Property<string>("PRType")
+                        .HasMaxLength(255);
+
+                    b.Property<string>("RONo")
+                        .HasMaxLength(255);
 
                     b.Property<string>("Remark");
+
+                    b.Property<long>("SCId");
+
+                    b.Property<string>("SCNo")
+                        .HasMaxLength(255);
+
+                    b.Property<string>("SectionName")
+                        .HasMaxLength(100);
 
                     b.Property<DateTimeOffset>("ShipmentDate");
 
@@ -3028,7 +3084,35 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<string>("UnitName")
                         .HasMaxLength(1000);
 
+                    b.Property<string>("ValidatedBy")
+                        .HasMaxLength(50);
+
+                    b.Property<DateTimeOffset?>("ValidatedDate");
+
+                    b.Property<string>("ValidatedMD1By")
+                        .HasMaxLength(50);
+
+                    b.Property<DateTimeOffset>("ValidatedMD1Date");
+
+                    b.Property<string>("ValidatedMD2By")
+                        .HasMaxLength(50);
+
+                    b.Property<DateTimeOffset>("ValidatedMD2Date");
+
+                    b.Property<string>("ValidatedPurchasingBy")
+                        .HasMaxLength(50);
+
+                    b.Property<DateTimeOffset>("ValidatedPurchasingDate");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("PRNo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
+
+                    b.HasIndex("RONo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
 
                     b.ToTable("GarmentPurchaseRequests");
                 });
@@ -3039,6 +3123,21 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                         .ValueGeneratedOnAdd();
 
                     b.Property<bool>("Active");
+
+                    b.Property<string>("ApprovedOpenPOKadivMdBy")
+                        .HasMaxLength(100);
+
+                    b.Property<DateTimeOffset>("ApprovedOpenPOKadivMdDate");
+
+                    b.Property<string>("ApprovedOpenPOMDBy")
+                        .HasMaxLength(100);
+
+                    b.Property<DateTimeOffset>("ApprovedOpenPOMDDate");
+
+                    b.Property<string>("ApprovedOpenPOPurchasingBy")
+                        .HasMaxLength(100);
+
+                    b.Property<DateTimeOffset>("ApprovedOpenPOPurchasingDate");
 
                     b.Property<double>("BudgetPrice");
 
@@ -3070,7 +3169,15 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<long>("GarmentPRId");
 
+                    b.Property<bool>("IsApprovedOpenPOKadivMd");
+
+                    b.Property<bool>("IsApprovedOpenPOMD");
+
+                    b.Property<bool>("IsApprovedOpenPOPurchasing");
+
                     b.Property<bool>("IsDeleted");
+
+                    b.Property<bool>("IsOpenPO");
 
                     b.Property<bool>("IsUsed");
 
@@ -3084,7 +3191,19 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<DateTime>("LastModifiedUtc");
 
+                    b.Property<string>("OpenPOBy")
+                        .HasMaxLength(100);
+
+                    b.Property<DateTimeOffset>("OpenPODate");
+
                     b.Property<string>("PO_SerialNumber")
+                        .HasMaxLength(255);
+
+                    b.Property<double>("PriceConversion");
+
+                    b.Property<long>("PriceUomId");
+
+                    b.Property<string>("PriceUomUnit")
                         .HasMaxLength(255);
 
                     b.Property<string>("ProductCode")
@@ -3118,6 +3237,184 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.ToTable("GarmentPurchaseRequestItems");
                 });
 
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.GarmentReceiptCorrectionModel.GarmentReceiptCorrection", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<bool>("Active");
+
+                    b.Property<DateTimeOffset>("CorrectionDate");
+
+                    b.Property<string>("CorrectionNo")
+                        .HasMaxLength(255);
+
+                    b.Property<string>("CorrectionType")
+                        .HasMaxLength(255);
+
+                    b.Property<string>("CreatedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("CreatedUtc");
+
+                    b.Property<string>("DeletedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("DeletedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("DeletedUtc");
+
+                    b.Property<bool>("IsDeleted");
+
+                    b.Property<string>("LastModifiedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("LastModifiedUtc");
+
+                    b.Property<string>("Remark");
+
+                    b.Property<string>("StorageCode")
+                        .HasMaxLength(255);
+
+                    b.Property<long>("StorageId");
+
+                    b.Property<string>("StorageName")
+                        .HasMaxLength(500);
+
+                    b.Property<string>("UId")
+                        .HasMaxLength(255);
+
+                    b.Property<long>("URNId");
+
+                    b.Property<string>("URNNo")
+                        .HasMaxLength(255);
+
+                    b.Property<string>("UnitCode")
+                        .HasMaxLength(255);
+
+                    b.Property<long>("UnitId");
+
+                    b.Property<string>("UnitName")
+                        .HasMaxLength(255);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorrectionNo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
+
+                    b.ToTable("GarmentReceiptCorrections");
+                });
+
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.GarmentReceiptCorrectionModel.GarmentReceiptCorrectionItem", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<bool>("Active");
+
+                    b.Property<double>("Conversion");
+
+                    b.Property<double>("CorrectionConversion");
+
+                    b.Property<long>("CorrectionId");
+
+                    b.Property<double>("CorrectionQuantity");
+
+                    b.Property<string>("CreatedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("CreatedUtc");
+
+                    b.Property<long>("DODetailId");
+
+                    b.Property<string>("DeletedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("DeletedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("DeletedUtc");
+
+                    b.Property<string>("DesignColor")
+                        .HasMaxLength(500);
+
+                    b.Property<long>("EPOItemId");
+
+                    b.Property<bool>("IsDeleted");
+
+                    b.Property<string>("LastModifiedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("LastModifiedUtc");
+
+                    b.Property<long>("POItemId");
+
+                    b.Property<string>("POSerialNumber")
+                        .HasMaxLength(500);
+
+                    b.Property<long>("PRItemId");
+
+                    b.Property<double>("PricePerDealUnit");
+
+                    b.Property<string>("ProductCode")
+                        .HasMaxLength(500);
+
+                    b.Property<long>("ProductId");
+
+                    b.Property<string>("ProductName");
+
+                    b.Property<string>("ProductRemark");
+
+                    b.Property<double>("Quantity");
+
+                    b.Property<string>("RONo")
+                        .HasMaxLength(255);
+
+                    b.Property<double>("SmallQuantity");
+
+                    b.Property<long>("SmallUomId");
+
+                    b.Property<string>("SmallUomUnit");
+
+                    b.Property<long>("URNItemId");
+
+                    b.Property<long>("UomId");
+
+                    b.Property<string>("UomUnit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorrectionId");
+
+                    b.ToTable("GarmentReceiptCorrectionItems");
+                });
+
             modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitDeliveryOrderModel.GarmentUnitDeliveryOrder", b =>
                 {
                     b.Property<long>("Id")
@@ -3125,11 +3422,13 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<bool>("Active");
 
-                    b.Property<string>("Article");
+                    b.Property<string>("Article")
+                        .HasMaxLength(1000);
 
                     b.Property<long>("CorrectionId");
 
-                    b.Property<string>("CorrectionNo");
+                    b.Property<string>("CorrectionNo")
+                        .HasMaxLength(255);
 
                     b.Property<string>("CreatedAgent")
                         .IsRequired()
@@ -3143,7 +3442,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<long>("DOId");
 
-                    b.Property<string>("DONo");
+                    b.Property<string>("DONo")
+                        .HasMaxLength(255);
 
                     b.Property<string>("DeletedAgent")
                         .IsRequired()
@@ -3169,42 +3469,67 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<DateTime>("LastModifiedUtc");
 
-                    b.Property<string>("RONo");
+                    b.Property<string>("RONo")
+                        .HasMaxLength(255);
 
-                    b.Property<string>("StorageCode");
+                    b.Property<string>("StorageCode")
+                        .HasMaxLength(255);
 
                     b.Property<long>("StorageId");
 
-                    b.Property<string>("StorageName");
+                    b.Property<string>("StorageName")
+                        .HasMaxLength(1000);
 
-                    b.Property<string>("StorageRequestCode");
+                    b.Property<string>("StorageRequestCode")
+                        .HasMaxLength(255);
 
                     b.Property<long>("StorageRequestId");
 
-                    b.Property<string>("StorageRequestName");
+                    b.Property<string>("StorageRequestName")
+                        .HasMaxLength(1000);
+
+                    b.Property<long>("UENFromId");
+
+                    b.Property<string>("UENFromNo")
+                        .HasMaxLength(255);
 
                     b.Property<string>("UId")
                         .HasMaxLength(255);
 
                     b.Property<DateTimeOffset>("UnitDODate");
 
-                    b.Property<string>("UnitDONo");
+                    b.Property<long>("UnitDOFromId");
 
-                    b.Property<string>("UnitDOType");
+                    b.Property<string>("UnitDOFromNo")
+                        .HasMaxLength(255);
 
-                    b.Property<string>("UnitRequestCode");
+                    b.Property<string>("UnitDONo")
+                        .HasMaxLength(255);
+
+                    b.Property<string>("UnitDOType")
+                        .HasMaxLength(255);
+
+                    b.Property<string>("UnitRequestCode")
+                        .HasMaxLength(255);
 
                     b.Property<long>("UnitRequestId");
 
-                    b.Property<string>("UnitRequestName");
+                    b.Property<string>("UnitRequestName")
+                        .HasMaxLength(1000);
 
-                    b.Property<string>("UnitSenderCode");
+                    b.Property<string>("UnitSenderCode")
+                        .HasMaxLength(255);
 
                     b.Property<long>("UnitSenderId");
 
-                    b.Property<string>("UnitSenderName");
+                    b.Property<string>("UnitSenderName")
+                        .HasMaxLength(1000);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UnitDONo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
 
                     b.ToTable("GarmentUnitDeliveryOrders");
                 });
@@ -3246,7 +3571,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<long>("EPOItemId");
 
-                    b.Property<string>("FabricType");
+                    b.Property<string>("FabricType")
+                        .HasMaxLength(255);
 
                     b.Property<bool>("IsDeleted");
 
@@ -3262,41 +3588,48 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<long>("POItemId");
 
-                    b.Property<string>("POSerialNumber");
+                    b.Property<string>("POSerialNumber")
+                        .HasMaxLength(255);
 
                     b.Property<long>("PRItemId");
 
                     b.Property<double>("PricePerDealUnit");
 
-                    b.Property<string>("ProductCode");
+                    b.Property<string>("ProductCode")
+                        .HasMaxLength(255);
 
                     b.Property<long>("ProductId");
 
-                    b.Property<string>("ProductName");
+                    b.Property<string>("ProductName")
+                        .HasMaxLength(1000);
 
                     b.Property<string>("ProductRemark");
 
                     b.Property<double>("Quantity");
 
-                    b.Property<string>("RONo");
+                    b.Property<string>("RONo")
+                        .HasMaxLength(255);
 
                     b.Property<double>("ReturQuantity");
 
                     b.Property<long?>("ReturUomId");
 
-                    b.Property<string>("ReturUomUnit");
+                    b.Property<string>("ReturUomUnit")
+                        .HasMaxLength(255);
 
                     b.Property<long>("URNId");
 
                     b.Property<long>("URNItemId");
 
-                    b.Property<string>("URNNo");
+                    b.Property<string>("URNNo")
+                        .HasMaxLength(255);
 
                     b.Property<long>("UnitDOId");
 
                     b.Property<long>("UomId");
 
-                    b.Property<string>("UomUnit");
+                    b.Property<string>("UomUnit")
+                        .HasMaxLength(255);
 
                     b.HasKey("Id");
 
@@ -3334,13 +3667,19 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<DateTimeOffset>("ExpenditureDate");
 
-                    b.Property<string>("ExpenditureTo");
+                    b.Property<string>("ExpenditureTo")
+                        .HasMaxLength(1000);
 
-                    b.Property<string>("ExpenditureType");
+                    b.Property<string>("ExpenditureType")
+                        .HasMaxLength(255);
 
                     b.Property<bool>("IsDeleted");
 
                     b.Property<bool>("IsPreparing");
+
+                    b.Property<bool>("IsReceived");
+
+                    b.Property<bool>("IsTransfered");
 
                     b.Property<string>("LastModifiedAgent")
                         .IsRequired()
@@ -3352,40 +3691,54 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<DateTime>("LastModifiedUtc");
 
-                    b.Property<string>("StorageCode");
+                    b.Property<string>("StorageCode")
+                        .HasMaxLength(255);
 
                     b.Property<long>("StorageId");
 
-                    b.Property<string>("StorageName");
+                    b.Property<string>("StorageName")
+                        .HasMaxLength(1000);
 
-                    b.Property<string>("StorageRequestCode");
+                    b.Property<string>("StorageRequestCode")
+                        .HasMaxLength(255);
 
                     b.Property<long>("StorageRequestId");
 
-                    b.Property<string>("StorageRequestName");
+                    b.Property<string>("StorageRequestName")
+                        .HasMaxLength(1000);
 
-                    b.Property<string>("UENNo");
+                    b.Property<string>("UENNo")
+                        .HasMaxLength(255);
 
                     b.Property<string>("UId")
                         .HasMaxLength(255);
 
                     b.Property<long>("UnitDOId");
 
-                    b.Property<string>("UnitDONo");
+                    b.Property<string>("UnitDONo")
+                        .HasMaxLength(255);
 
-                    b.Property<string>("UnitRequestCode");
+                    b.Property<string>("UnitRequestCode")
+                        .HasMaxLength(255);
 
                     b.Property<long>("UnitRequestId");
 
-                    b.Property<string>("UnitRequestName");
+                    b.Property<string>("UnitRequestName")
+                        .HasMaxLength(1000);
 
-                    b.Property<string>("UnitSenderCode");
+                    b.Property<string>("UnitSenderCode")
+                        .HasMaxLength(255);
 
                     b.Property<long>("UnitSenderId");
 
-                    b.Property<string>("UnitSenderName");
+                    b.Property<string>("UnitSenderName")
+                        .HasMaxLength(1000);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UENNo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-01 00:00:00.0000000')");
 
                     b.ToTable("GarmentUnitExpenditureNotes");
                 });
@@ -3400,7 +3753,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<decimal>("BasicPrice")
                         .HasColumnType("decimal(38, 4)");
 
-                    b.Property<string>("BuyerCode");
+                    b.Property<string>("BuyerCode")
+                        .HasMaxLength(255);
 
                     b.Property<long>("BuyerId");
 
@@ -3433,7 +3787,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<long>("EPOItemId");
 
-                    b.Property<string>("FabricType");
+                    b.Property<string>("FabricType")
+                        .HasMaxLength(255);
 
                     b.Property<bool>("IsDeleted");
 
@@ -3449,23 +3804,29 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<long>("POItemId");
 
-                    b.Property<string>("POSerialNumber");
+                    b.Property<string>("POSerialNumber")
+                        .HasMaxLength(255);
 
                     b.Property<long>("PRItemId");
 
                     b.Property<double>("PricePerDealUnit");
 
-                    b.Property<string>("ProductCode");
+                    b.Property<string>("ProductCode")
+                        .HasMaxLength(255);
 
                     b.Property<long>("ProductId");
 
-                    b.Property<string>("ProductName");
+                    b.Property<string>("ProductName")
+                        .HasMaxLength(255);
 
                     b.Property<string>("ProductRemark");
 
                     b.Property<double>("Quantity");
 
-                    b.Property<string>("RONo");
+                    b.Property<string>("RONo")
+                        .HasMaxLength(255);
+
+                    b.Property<double>("ReturQuantity");
 
                     b.Property<long>("UENId");
 
@@ -3475,7 +3836,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<long>("UomId");
 
-                    b.Property<string>("UomUnit");
+                    b.Property<string>("UomUnit")
+                        .HasMaxLength(255);
 
                     b.HasKey("Id");
 
@@ -3507,6 +3869,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<string>("DONo")
                         .HasMaxLength(255);
+
+                    b.Property<string>("DRId");
+
+                    b.Property<string>("DRNo");
 
                     b.Property<string>("DeletedAgent")
                         .IsRequired()
@@ -3558,11 +3924,17 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<string>("SupplierName")
                         .HasMaxLength(1000);
 
+                    b.Property<long>("UENId");
+
+                    b.Property<string>("UENNo");
+
                     b.Property<string>("UId")
                         .HasMaxLength(255);
 
                     b.Property<string>("URNNo")
                         .HasMaxLength(255);
+
+                    b.Property<string>("URNType");
 
                     b.Property<string>("UnitCode")
                         .HasMaxLength(255);
@@ -3573,6 +3945,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                         .HasMaxLength(1000);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("URNNo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2019-10-04 00:00:00.0000000')");
 
                     b.ToTable("GarmentUnitReceiptNotes");
                 });
@@ -3587,6 +3963,9 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<decimal>("Conversion")
                         .HasColumnType("decimal(38, 20)");
 
+                    b.Property<decimal>("CorrectionConversion")
+                        .HasColumnType("decimal(38, 20)");
+
                     b.Property<string>("CreatedAgent")
                         .IsRequired()
                         .HasMaxLength(255);
@@ -3597,7 +3976,11 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<DateTime>("CreatedUtc");
 
+                    b.Property<double>("DOCurrencyRate");
+
                     b.Property<long>("DODetailId");
+
+                    b.Property<string>("DRItemId");
 
                     b.Property<string>("DeletedAgent")
                         .IsRequired()
@@ -3662,7 +4045,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<decimal>("ReceiptCorrection");
 
-                    b.Property<decimal>("ReceiptQuantity");
+                    b.Property<decimal>("ReceiptQuantity")
+                        .HasColumnType("decimal(20, 4)");
 
                     b.Property<decimal>("SmallQuantity");
 
@@ -3670,6 +4054,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<string>("SmallUomUnit")
                         .HasMaxLength(1000);
+
+                    b.Property<long>("UENItemId");
 
                     b.Property<long>("URNId");
 
@@ -3791,6 +4177,184 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("InternalPurchaseOrders");
+                });
+
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.InternalPurchaseOrderModel.InternalPurchaseOrderCorrection", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<bool>("Active");
+
+                    b.Property<DateTimeOffset>("CorrectionDate");
+
+                    b.Property<string>("CorrectionNo")
+                        .HasMaxLength(128);
+
+                    b.Property<double>("CorrectionPriceTotal");
+
+                    b.Property<double>("CorrectionQuantity");
+
+                    b.Property<string>("CorrectionRemark")
+                        .HasMaxLength(4000);
+
+                    b.Property<string>("CreatedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("CreatedUtc");
+
+                    b.Property<string>("DeletedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("DeletedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("DeletedUtc");
+
+                    b.Property<bool>("IsDeleted");
+
+                    b.Property<string>("LastModifiedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("LastModifiedUtc");
+
+                    b.Property<long>("POFulfillmentId");
+
+                    b.Property<long>("UnitPaymentCorrectionId");
+
+                    b.Property<long>("UnitPaymentCorrectionItemId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("POFulfillmentId");
+
+                    b.ToTable("InternalPurchaseOrderCorrections");
+                });
+
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.InternalPurchaseOrderModel.InternalPurchaseOrderFulFillment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<bool>("Active");
+
+                    b.Property<string>("CreatedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("CreatedUtc");
+
+                    b.Property<string>("DeletedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("DeletedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("DeletedUtc");
+
+                    b.Property<DateTimeOffset>("DeliveryOrderDate");
+
+                    b.Property<double>("DeliveryOrderDeliveredQuantity");
+
+                    b.Property<long>("DeliveryOrderDetailId");
+
+                    b.Property<long>("DeliveryOrderId");
+
+                    b.Property<long>("DeliveryOrderItemId");
+
+                    b.Property<string>("DeliveryOrderNo")
+                        .HasMaxLength(64);
+
+                    b.Property<DateTimeOffset>("InterNoteDate");
+
+                    b.Property<DateTimeOffset>("InterNoteDueDate");
+
+                    b.Property<string>("InterNoteNo")
+                        .HasMaxLength(64);
+
+                    b.Property<double>("InterNoteValue");
+
+                    b.Property<DateTimeOffset>("InvoiceDate");
+
+                    b.Property<string>("InvoiceNo")
+                        .HasMaxLength(64);
+
+                    b.Property<bool>("IsDeleted");
+
+                    b.Property<string>("LastModifiedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("LastModifiedUtc");
+
+                    b.Property<long>("POItemId");
+
+                    b.Property<DateTimeOffset>("SupplierDODate");
+
+                    b.Property<long>("UnitPaymentOrderDetailId");
+
+                    b.Property<long>("UnitPaymentOrderId");
+
+                    b.Property<DateTimeOffset>("UnitPaymentOrderIncomeTaxDate");
+
+                    b.Property<string>("UnitPaymentOrderIncomeTaxNo");
+
+                    b.Property<double>("UnitPaymentOrderIncomeTaxRate");
+
+                    b.Property<long>("UnitPaymentOrderItemId");
+
+                    b.Property<bool>("UnitPaymentOrderUseIncomeTax");
+
+                    b.Property<bool>("UnitPaymentOrderUseVat");
+
+                    b.Property<DateTimeOffset>("UnitPaymentOrderVatDate");
+
+                    b.Property<string>("UnitPaymentOrderVatNo");
+
+                    b.Property<DateTimeOffset>("UnitReceiptNoteDate");
+
+                    b.Property<double>("UnitReceiptNoteDeliveredQuantity");
+
+                    b.Property<long>("UnitReceiptNoteId");
+
+                    b.Property<long>("UnitReceiptNoteItemId");
+
+                    b.Property<string>("UnitReceiptNoteNo")
+                        .HasMaxLength(64);
+
+                    b.Property<string>("UnitReceiptNoteUom")
+                        .HasMaxLength(128);
+
+                    b.Property<string>("UnitReceiptNoteUomId")
+                        .HasMaxLength(64);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("POItemId");
+
+                    b.ToTable("InternalPurchaseOrderFulfillments");
                 });
 
             modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.InternalPurchaseOrderModel.InternalPurchaseOrderItem", b =>
@@ -3963,6 +4527,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                         .HasMaxLength(1000);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("No")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2020-02-01 00:00:00.0000000')");
 
                     b.ToTable("PurchaseRequests");
                 });
@@ -4395,6 +4963,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("UPCNo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2020-02-01 00:00:00.0000000')");
+
                     b.ToTable("UnitPaymentCorrectionNotes");
                 });
 
@@ -4622,6 +5194,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                         .HasMaxLength(255);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UPONo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2020-02-01 00:00:00.0000000')");
 
                     b.ToTable("UnitPaymentOrders");
                 });
@@ -4874,6 +5450,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("URNNo")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted]=(0) AND [CreatedUtc]>CONVERT([datetime2],'2020-02-01 00:00:00.0000000')");
+
                     b.ToTable("UnitReceiptNotes");
                 });
 
@@ -4965,6 +5545,205 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.HasIndex("URNId");
 
                     b.ToTable("UnitReceiptNoteItems");
+                });
+
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentPOMasterDistributionModels.GarmentPOMasterDistribution", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<bool>("Active");
+
+                    b.Property<string>("CreatedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("CreatedUtc");
+
+                    b.Property<DateTimeOffset>("DODate");
+
+                    b.Property<long>("DOId");
+
+                    b.Property<string>("DONo")
+                        .HasMaxLength(25);
+
+                    b.Property<string>("DeletedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("DeletedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("DeletedUtc");
+
+                    b.Property<bool>("IsDeleted");
+
+                    b.Property<string>("LastModifiedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("LastModifiedUtc");
+
+                    b.Property<long>("SupplierId");
+
+                    b.Property<string>("SupplierName")
+                        .HasMaxLength(100);
+
+                    b.Property<string>("UId")
+                        .HasMaxLength(255);
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GarmentPOMasterDistributions");
+                });
+
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentPOMasterDistributionModels.GarmentPOMasterDistributionDetail", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<bool>("Active");
+
+                    b.Property<double>("Conversion");
+
+                    b.Property<long>("CostCalculationId");
+
+                    b.Property<string>("CreatedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("CreatedUtc");
+
+                    b.Property<string>("DeletedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("DeletedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("DeletedUtc");
+
+                    b.Property<bool>("IsDeleted");
+
+                    b.Property<string>("LastModifiedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("LastModifiedUtc");
+
+                    b.Property<string>("OverUsageReason")
+                        .HasMaxLength(1000);
+
+                    b.Property<long>("POMasterDistributionItemId");
+
+                    b.Property<string>("POSerialNumber")
+                        .HasMaxLength(25);
+
+                    b.Property<string>("ProductCode")
+                        .HasMaxLength(25);
+
+                    b.Property<long>("ProductId");
+
+                    b.Property<decimal>("Quantity");
+
+                    b.Property<decimal>("QuantityCC");
+
+                    b.Property<string>("RONo")
+                        .HasMaxLength(25);
+
+                    b.Property<string>("UId")
+                        .HasMaxLength(255);
+
+                    b.Property<long>("UomCCId");
+
+                    b.Property<string>("UomCCUnit")
+                        .HasMaxLength(50);
+
+                    b.Property<long>("UomId");
+
+                    b.Property<string>("UomUnit")
+                        .HasMaxLength(50);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("POMasterDistributionItemId");
+
+                    b.ToTable("GarmentPOMasterDistributionDetails");
+                });
+
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentPOMasterDistributionModels.GarmentPOMasterDistributionItem", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<bool>("Active");
+
+                    b.Property<string>("CreatedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("CreatedUtc");
+
+                    b.Property<long>("DODetailId");
+
+                    b.Property<long>("DOItemId");
+
+                    b.Property<string>("DeletedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("DeletedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("DeletedUtc");
+
+                    b.Property<bool>("IsDeleted");
+
+                    b.Property<string>("LastModifiedAgent")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<string>("LastModifiedBy")
+                        .IsRequired()
+                        .HasMaxLength(255);
+
+                    b.Property<DateTime>("LastModifiedUtc");
+
+                    b.Property<long>("POMasterDistributionId");
+
+                    b.Property<long>("SCId");
+
+                    b.Property<string>("UId")
+                        .HasMaxLength(255);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("POMasterDistributionId");
+
+                    b.ToTable("GarmentPOMasterDistributionItems");
                 });
 
             modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.BankExpenditureNoteModel.BankExpenditureNoteDetailModel", b =>
@@ -5132,6 +5911,14 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.GarmentReceiptCorrectionModel.GarmentReceiptCorrectionItem", b =>
+                {
+                    b.HasOne("Com.DanLiris.Service.Purchasing.Lib.Models.GarmentReceiptCorrectionModel.GarmentReceiptCorrection", "GarmentReceiptCorrection")
+                        .WithMany("Items")
+                        .HasForeignKey("CorrectionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitDeliveryOrderModel.GarmentUnitDeliveryOrderItem", b =>
                 {
                     b.HasOne("Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitDeliveryOrderModel.GarmentUnitDeliveryOrder", "GarmentUnitDeliveryOrder")
@@ -5153,6 +5940,22 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.HasOne("Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitReceiptNoteModel.GarmentUnitReceiptNote", "GarmentUnitReceiptNote")
                         .WithMany("Items")
                         .HasForeignKey("URNId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.InternalPurchaseOrderModel.InternalPurchaseOrderCorrection", b =>
+                {
+                    b.HasOne("Com.DanLiris.Service.Purchasing.Lib.Models.InternalPurchaseOrderModel.InternalPurchaseOrderFulFillment", "InternalPurchaseOrderFulFillment")
+                        .WithMany("Corrections")
+                        .HasForeignKey("POFulfillmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.Models.InternalPurchaseOrderModel.InternalPurchaseOrderFulFillment", b =>
+                {
+                    b.HasOne("Com.DanLiris.Service.Purchasing.Lib.Models.InternalPurchaseOrderModel.InternalPurchaseOrderItem", "InternalPurchaseOrderItem")
+                        .WithMany("Fulfillments")
+                        .HasForeignKey("POItemId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
@@ -5217,6 +6020,22 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.HasOne("Com.DanLiris.Service.Purchasing.Lib.Models.UnitReceiptNoteModel.UnitReceiptNote", "UnitReceiptNote")
                         .WithMany("Items")
                         .HasForeignKey("URNId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentPOMasterDistributionModels.GarmentPOMasterDistributionDetail", b =>
+                {
+                    b.HasOne("Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentPOMasterDistributionModels.GarmentPOMasterDistributionItem", "GarmentPOMasterDistributionItem")
+                        .WithMany("Details")
+                        .HasForeignKey("POMasterDistributionItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentPOMasterDistributionModels.GarmentPOMasterDistributionItem", b =>
+                {
+                    b.HasOne("Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentPOMasterDistributionModels.GarmentPOMasterDistribution", "GarmentPOMasterDistribution")
+                        .WithMany("Items")
+                        .HasForeignKey("POMasterDistributionId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 #pragma warning restore 612, 618

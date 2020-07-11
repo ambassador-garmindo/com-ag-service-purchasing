@@ -1,5 +1,6 @@
 ﻿using Com.DanLiris.Service.Purchasing.Lib.Helpers;
 using Com.DanLiris.Service.Purchasing.Lib.Models.UnitReceiptNoteModel;
+using Com.DanLiris.Service.Purchasing.Lib.Utilities.Currencies;
 using Com.DanLiris.Service.Purchasing.Lib.ViewModels.IntegrationViewModel;
 using Com.DanLiris.Service.Purchasing.Lib.ViewModels.PurchaseOrder;
 using Com.DanLiris.Service.Purchasing.Lib.ViewModels.UnitReceiptNote;
@@ -7,6 +8,7 @@ using Com.DanLiris.Service.Purchasing.Lib.ViewModels.UnitReceiptNoteViewModel;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -18,249 +20,400 @@ using System.Threading.Tasks;
 
 namespace Com.DanLiris.Service.Purchasing.Lib.Facades.Report
 {
-    public class ImportPurchasingBookReportFacade
+    public class ImportPurchasingBookReportFacade : IImportPurchasingBookReportFacade
     {
-		private readonly PurchasingDbContext dbContext;
-		public readonly IServiceProvider serviceProvider;
-		private readonly DbSet<UnitReceiptNote> dbSet;
+        private readonly PurchasingDbContext dbContext;
+        public readonly IServiceProvider serviceProvider;
+        private readonly DbSet<UnitReceiptNote> dbSet;
+        private readonly ICurrencyProvider _currencyProvider;
 
-
-		public ImportPurchasingBookReportFacade(IServiceProvider serviceProvider, PurchasingDbContext dbContext)
-		{
-			//MongoDbContext mongoDbContext = new MongoDbContext();
-			//collection = mongoDbContext.UnitReceiptNote;
-			//collectionUnitPaymentOrder = mongoDbContext.UnitPaymentOrder;
-
-			//filterBuilder = Builders<BsonDocument>.Filter;
-			this.serviceProvider = serviceProvider;
-			this.dbContext = dbContext;
-			this.dbSet = dbContext.Set<UnitReceiptNote>();
-		}
-
-        public IEnumerable<ImportPurchasingBookViewModel> GetReportQuery(string no, string unit, string category, DateTime? dateFrom, DateTime? dateTo)
+        public ImportPurchasingBookReportFacade(IServiceProvider serviceProvider, PurchasingDbContext dbContext)
         {
-            DateTime d1 = dateFrom == null ? new DateTime(1970, 1, 1) : (DateTime)dateFrom;
-            DateTime d2 = dateTo == null ? DateTime.Now : (DateTime)dateTo;
+            //MongoDbContext mongoDbContext = new MongoDbContext();
+            //collection = mongoDbContext.UnitReceiptNote;
+            //collectionUnitPaymentOrder = mongoDbContext.UnitPaymentOrder;
 
-            var Data = (from a in dbContext.InternalPurchaseOrders
-                        join b in dbContext.ExternalPurchaseOrderItems on a.Id equals b.POId
-                        join c in dbContext.ExternalPurchaseOrders on b.EPOId equals c.Id
-                        join d in dbContext.ExternalPurchaseOrderDetails on b.Id equals d.EPOItemId
-                        join e in dbContext.DeliveryOrderItems on c.Id equals e.EPOId
-                        join f in dbContext.DeliveryOrders on e.DOId equals f.Id
-                        join g in dbContext.UnitReceiptNotes on f.Id equals g.DOId
-                        join h in dbContext.UnitReceiptNoteItems on new { gId = g.Id, dId = d.Id } equals new { gId = h.URNId, dId = h.EPODetailId }
-                        where g.IsDeleted == false && g.URNNo.Contains("BPI")
-                            && ((d1 != new DateTime(1970, 1, 1)) ? (g.ReceiptDate.Date >= d1 && g.ReceiptDate.Date <= d2) : true)
-                            && ((category != null) ? (a.CategoryCode == category) : true)
-                            && ((unit != null) ? (g.UnitCode == unit) : true)
-                            && ((no != null) ? (g.URNNo == no) : true)
-                        select new
-                        {
-                            //g.Id,
-                            g.URNNo,
-                            g.ReceiptDate,
-                            h.ProductName,
-                            g.UnitName,
-                            a.CategoryName,
-                            PIBNo = g.IsPaid == false ? "-" : (
-                                    from o in dbContext.UnitPaymentOrders
-                                    join uo in dbContext.UnitPaymentOrderItems on o.Id equals uo.UPOId
-                                    where uo.URNId == g.Id
-                                    select o.PibNo
-                                )
-                                .FirstOrDefault() ?? "-",
-                            amount = h.PricePerDealUnit * h.ReceiptQuantity,
-                            amountIDR = h.PricePerDealUnit * h.ReceiptQuantity * c.CurrencyRate,
-                            c.CurrencyRate
-                        })
-                        .Distinct()
-                        .ToList();
+            //filterBuilder = Builders<BsonDocument>.Filter;
+            this.serviceProvider = serviceProvider;
+            this.dbContext = dbContext;
+            this.dbSet = dbContext.Set<UnitReceiptNote>();
+            _currencyProvider = (ICurrencyProvider)serviceProvider.GetService(typeof(ICurrencyProvider));
 
-            var Query = from data in Data
-                        group data by new { data.URNNo, data.ReceiptDate, data.ProductName, data.UnitName, data.CategoryName, data.PIBNo, data.CurrencyRate } into groupData
-                        select new ImportPurchasingBookViewModel
-                        {
-                            urnNo = groupData.Key.URNNo,
-                            receiptDate = groupData.Key.ReceiptDate.DateTime,
-                            productName = groupData.Key.ProductName,
-                            unitName = groupData.Key.UnitName,
-                            categoryName = groupData.Key.CategoryName,
-                            PIBNo = groupData.Key.PIBNo,
-                            amount = (decimal)groupData.Sum(s => s.amount),
-                            amountIDR = (decimal)groupData.Sum(s => s.amountIDR),
-                            rate = (decimal)groupData.Key.CurrencyRate,
-                        };
-
-            return Query;
         }
 
-        public Tuple<List<ImportPurchasingBookViewModel>, int> GetReport(string no, string unit, string category, DateTime? dateFrom, DateTime? dateTo)
+        public async Task<LocalPurchasingBookReportViewModel> GetReportData(string no, string unit, string categoryCode, DateTime? dateFrom, DateTime? dateTo)
         {
-            List<ImportPurchasingBookViewModel> reportData = GetReportQuery(no, unit, category, dateFrom, dateTo).ToList();
+            var d1 = dateFrom.GetValueOrDefault().ToUniversalTime();
+            var d2 = (dateTo.HasValue ? dateTo.Value : DateTime.Now).ToUniversalTime();
 
-            return Tuple.Create(reportData, reportData.Count);
-		}
+            var query = from urnWithItem in dbContext.UnitReceiptNoteItems
+
+                        join pr in dbContext.PurchaseRequests on urnWithItem.PRId equals pr.Id into joinPurchaseRequest
+                        from urnPR in joinPurchaseRequest.DefaultIfEmpty()
+
+                        join epoDetail in dbContext.ExternalPurchaseOrderDetails on urnWithItem.EPODetailId equals epoDetail.Id into joinExternalPurchaseOrder
+                        from urnEPODetail in joinExternalPurchaseOrder.DefaultIfEmpty()
+
+                        join upoItem in dbContext.UnitPaymentOrderItems on urnWithItem.URNId equals upoItem.URNId into joinUnitPaymentOrder
+                        from urnUPOItem in joinUnitPaymentOrder.DefaultIfEmpty()
+
+                        where urnWithItem.UnitReceiptNote.ReceiptDate >= d1 && urnWithItem.UnitReceiptNote.ReceiptDate <= d2 && urnWithItem.UnitReceiptNote.SupplierIsImport
+                        select new
+                        {
+                            // PR Info
+                            urnPR.CategoryCode,
+                            urnPR.CategoryName,
+
+                            urnWithItem.PRId,
+                            urnWithItem.UnitReceiptNote.DOId,
+                            urnWithItem.UnitReceiptNote.DONo,
+                            urnWithItem.UnitReceiptNote.URNNo,
+                            URNId = urnWithItem.UnitReceiptNote.Id,
+                            urnWithItem.ProductName,
+                            urnWithItem.UnitReceiptNote.ReceiptDate,
+                            urnWithItem.UnitReceiptNote.SupplierName,
+                            urnWithItem.UnitReceiptNote.UnitCode,
+                            urnWithItem.UnitReceiptNote.UnitName,
+                            urnWithItem.EPODetailId,
+                            urnWithItem.PricePerDealUnit,
+                            urnWithItem.ReceiptQuantity,
+                            urnWithItem.Uom,
+
+                            // EPO Info
+                            urnEPODetail.ExternalPurchaseOrderItem.PONo,
+                            urnEPODetail.ExternalPurchaseOrderItem.ExternalPurchaseOrder.UseVat,
+                            EPOPricePerDealUnit = urnEPODetail.PricePerDealUnit,
+                            urnEPODetail.ExternalPurchaseOrderItem.ExternalPurchaseOrder.CurrencyCode,
+
+                            // UPO Info
+                            urnUPOItem.UnitPaymentOrder.InvoiceNo,
+                            urnUPOItem.UnitPaymentOrder.UPONo,
+                            urnUPOItem.UnitPaymentOrder.VatNo,
+                            urnUPOItem.UnitPaymentOrder.PibNo
+                        };
+
+
+            //var query = dbSet
+            //    .Where(urn => urn.ReceiptDate >= d1.ToUniversalTime() && urn.ReceiptDate.ToUniversalTime() <= d2 && !urn.SupplierIsImport);
+
+            if (!string.IsNullOrWhiteSpace(no))
+                query = query.Where(urn => urn.URNNo == no);
+
+            if (!string.IsNullOrWhiteSpace(unit))
+                query = query.Where(urn => urn.UnitCode == unit);
+
+            //var prIds = query.SelectMany(urn => urn.Items.Select(s => s.PRId)).ToList();
+
+            if (!string.IsNullOrWhiteSpace(categoryCode))
+                query = query.Where(urn => urn.CategoryCode == categoryCode);
+
+            var queryResult = query.OrderByDescending(item => item.ReceiptDate).ToList();
+            //var currencyCodes = queryResult.Select(item => item.CurrencyCode).ToList();
+            //var receiptDates = queryResult.Select(item => item.ReceiptDate).ToList();
+            var currencyTuples = queryResult.Select(item => new Tuple<string, DateTimeOffset>(item.CurrencyCode, item.ReceiptDate));
+            var currencies = await _currencyProvider.GetCurrencyByCurrencyCodeDateList(currencyTuples);
+
+            var reportResult = new LocalPurchasingBookReportViewModel();
+            foreach (var item in queryResult)
+            {
+                //var purchaseRequest = purchaseRequests.FirstOrDefault(f => f.Id.Equals(urnItem.PRId));
+                //var unitPaymentOrder = unitPaymentOrders.FirstOrDefault(f => f.URNId.Equals(urnItem.URNId));
+                //var epoItem = epoItems.FirstOrDefault(f => f.epoDetailIds.Contains(urnItem.EPODetailId));
+                //var epoDetail = epoItem.Details.FirstOrDefault(f => f.Id.Equals(urnItem.EPODetailId));
+                var currency = currencies.FirstOrDefault(f => f.Code.Equals(item.CurrencyCode));
+
+                decimal dpp = 0;
+                decimal dppCurrency = 0;
+                decimal ppn = 0;
+
+                //default IDR
+                double currencyRate = 1;
+                var currencyCode = "IDR";
+                if (currency != null && !currency.Code.Equals("IDR"))
+                {
+                    dppCurrency = (decimal)(item.EPOPricePerDealUnit * item.ReceiptQuantity);
+                    currencyRate = currency.Rate.GetValueOrDefault();
+                    currencyCode = currency.Code;
+                }
+                else
+                    dpp = (decimal)(item.EPOPricePerDealUnit * item.ReceiptQuantity);
+
+                if (item.UseVat)
+                    ppn = (decimal)(item.EPOPricePerDealUnit * item.ReceiptQuantity * 0.1);
 
 
 
-		#region Ra sido dinggo
+                var reportItem = new PurchasingReport()
+                {
+                    CategoryName = item.CategoryName,
+                    CategoryCode = item.CategoryCode,
+                    CurrencyRate = (decimal)currencyRate,
+                    DONo = item.DONo,
+                    DPP = dpp,
+                    DPPCurrency = dppCurrency,
+                    InvoiceNo = item.InvoiceNo,
+                    VATNo = item.VatNo,
+                    IPONo = item.PONo,
+                    VAT = ppn,
+                    Total = (dpp + dppCurrency + ppn) * (decimal)currencyRate,
+                    ProductName = item.ProductName,
+                    ReceiptDate = item.ReceiptDate,
+                    SupplierName = item.SupplierName,
+                    UnitName = item.UnitName,
+                    UPONo = item.UPONo,
+                    URNNo = item.URNNo,
+                    IsUseVat = item.UseVat,
+                    CurrencyCode = currencyCode,
+                    PIBNo = item.PibNo
+                };
+                reportItem.PIBBM = reportItem.Total * 0.1m;
 
-		//public Tuple<List<UnitReceiptNoteViewModel>, int> GetReports(string no, string unit, string category, DateTime? dateFrom, DateTime? dateTo)
-		//{
-		//    List<FilterDefinition<BsonDocument>> filter = new List<FilterDefinition<BsonDocument>>
-		//    {
-		//        filterBuilder.Eq("_deleted", false),
-		//        filterBuilder.Eq("supplier.import", true)
-		//    };
+                reportResult.Reports.Add(reportItem);
+            }
 
-		//    if (no != null)
-		//        filter.Add(filterBuilder.Eq("no", no));
-		//    if (unit != null)
-		//        filter.Add(filterBuilder.Eq("unit.code", unit));
-		//    if (category != null)
-		//        filter.Add(filterBuilder.Eq("items.purchaseOrder.category.code", category));
-		//    if (dateFrom != null && dateTo != null)
-		//        filter.Add(filterBuilder.And(filterBuilder.Gte("date", dateFrom), filterBuilder.Lte("date", dateTo)));
+            reportResult.CategorySummaries = reportResult.Reports
+                        .GroupBy(report => new { report.CategoryCode })
+                        .Select(report => new Summary()
+                        {
+                            Category = report.Key.CategoryCode,
+                            SubTotal = report.Sum(sum => sum.Total)
+                        }).OrderBy(order => order.Category).ToList();
+            reportResult.CurrencySummaries = reportResult.Reports
+                .GroupBy(report => new { report.CurrencyCode })
+                .Select(report => new Summary()
+                {
+                    CurrencyCode = report.Key.CurrencyCode,
+                    SubTotal = report.Sum(sum => sum.DPP + sum.DPPCurrency + sum.VAT)
+                }).OrderBy(order => order.CurrencyCode).ToList();
+            reportResult.Reports = reportResult.Reports;
+            reportResult.GrandTotal = reportResult.Reports.Sum(sum => sum.Total);
+            reportResult.CategorySummaryTotal = reportResult.CategorySummaries.Sum(categorySummary => categorySummary.SubTotal);
 
-		//    List<BsonDocument> ListData = collection.Find(filterBuilder.And(filter)).ToList();
-		//    //List<BsonDocument> ListData = collection.Aggregate()
-		//    //    .Match(filterBuilder.And(filter))
-		//    //    .ToList();
+            #region Old Query
+            //if (prIds.Count > 0)
+            //{
+            //    var purchaseRequestQuery = dbContext.PurchaseRequests.AsQueryable();
 
-		//    List<UnitReceiptNoteViewModel> Data = new List<UnitReceiptNoteViewModel>();
 
-		//    foreach (var data in ListData)
-		//    {
-		//        List<UnitReceiptNoteItemViewModel> Items = new List<UnitReceiptNoteItemViewModel>();
-		//        foreach (var item in data.GetValue("items").AsBsonArray)
-		//        {
-		//            var itemDocument = item.AsBsonDocument;
-		//            Items.Add(new UnitReceiptNoteItemViewModel
-		//            {
-		//                deliveredQuantity = GetBsonValue.ToDouble(itemDocument, "deliveredQuantity"),
-		//                pricePerDealUnit = GetBsonValue.ToDouble(itemDocument, "pricePerDealUnit"),
-		//                currencyRate = GetBsonValue.ToDouble(itemDocument, "currencyRate"),
-		//                product = new ProductViewModel
-		//                {
-		//                    name = GetBsonValue.ToString(itemDocument, "product.name")
-		//                },
-		//                purchaseOrder = new PurchaseOrderViewModel
-		//                {
-		//                    category = new CategoryViewModel
-		//                    {
-		//                        name = GetBsonValue.ToString(itemDocument, "purchaseOrder.category.code")
-		//                    }
-		//                },
-		//            });
-		//        }
-		//        var UnitReceiptNoteNo = GetBsonValue.ToString(data, "no");
-		//        var dataUnitPaymentOrder = collectionUnitPaymentOrder.Find(filterBuilder.Eq("items.unitReceiptNote.no", UnitReceiptNoteNo)).FirstOrDefault();
-		//        Data.Add(new UnitReceiptNoteViewModel
-		//        {
-		//            no = UnitReceiptNoteNo,
-		//            date = data.GetValue("date").ToUniversalTime(),
-		//            unit = new UnitViewModel
-		//            {
-		//                name = GetBsonValue.ToString(data, "unit.name")
-		//            },
-		//            pibNo = dataUnitPaymentOrder != null ? GetBsonValue.ToString(dataUnitPaymentOrder, "pibNo", new BsonString("-")) : "-",
-		//            items = Items,
-		//        });
-		//    }
+            //    if (purchaseRequestQuery.Count() > 0)
+            //    {
+            //        //var purchaseRequests = purchaseRequestQuery.Select(pr => new { pr.Id, pr.CategoryName, pr.CategoryCode }).ToList();
+            //        //prIds = purchaseRequests.Select(pr => pr.Id).ToList();
+            //        //var categories = purchaseRequests.Select(pr => pr.CategoryCode).Distinct().ToList();
 
-		//    return Tuple.Create(Data, Data.Count);
-		//}
+            //        //var urnIds = query.Select(urn => urn.Id).ToList();
+            //        //var urnItems = dbContext.UnitReceiptNoteItems
+            //        //    .Include(urnItem => urnItem.UnitReceiptNote)
+            //        //    .Where(urnItem => urnIds.Contains(urnItem.URNId) && prIds.Contains(urnItem.PRId))
+            //        //    .Select(urnItem => new
+            //        //    {
+            //        //        urnItem.PRId,
+            //        //        urnItem.UnitReceiptNote.DOId,
+            //        //        urnItem.UnitReceiptNote.DONo,
+            //        //        urnItem.UnitReceiptNote.URNNo,
+            //        //        URNId = urnItem.UnitReceiptNote.Id,
+            //        //        urnItem.ProductName,
+            //        //        urnItem.UnitReceiptNote.ReceiptDate,
+            //        //        urnItem.UnitReceiptNote.SupplierName,
+            //        //        urnItem.UnitReceiptNote.UnitCode,
+            //        //        urnItem.EPODetailId,
+            //        //        urnItem.PricePerDealUnit,
+            //        //        urnItem.ReceiptQuantity,
+            //        //        urnItem.Uom
+            //        //    })
+            //        //    .ToList();
 
-		//// JSON ora iso nge-cast
-		//public Tuple<List<BsonDocument>, int> GetReport()
-		//{
-		//    IMongoCollection<BsonDocument> collection = new MongoDbContext().UnitReceiptNote;
-		//    List<BsonDocument> ListData = collection.Aggregate().ToList();
+            //        //var epoDetailIds = urnItems.Select(urnItem => urnItem.EPODetailId).ToList();
+            //        //var epoItemIds = dbContext.ExternalPurchaseOrderDetails
+            //        //    .Include(epoDetail => epoDetail.ExternalPurchaseOrderItem)
+            //        //    .Where(epoDetail => epoDetailIds.Contains(epoDetail.Id))
+            //        //    .Select(epoDetail => epoDetail.ExternalPurchaseOrderItem.Id)
+            //        //    .ToList();
+            //        var epoItems = dbContext.ExternalPurchaseOrderItems
+            //            .Include(epoItem => epoItem.ExternalPurchaseOrder)
+            //            .Where(epoItem => epoItemIds.Contains(epoItem.Id))
+            //            .Select(epoItem => new
+            //            {
+            //                epoItem.PONo,
+            //                epoDetailIds = epoItem.Details.Select(epoDetail => epoDetail.Id).ToList(),
+            //                epoItem.ExternalPurchaseOrder.CurrencyCode,
+            //                epoItem.ExternalPurchaseOrder.UseVat,
+            //                Details = epoItem.Details.Select(epoDetail => new { epoDetail.PricePerDealUnit, epoDetail.Id }).ToList()
+            //            })
+            //            .ToList();
 
-		//    return Tuple.Create(ListData, ListData.Count);
-		//}
+            //        var unitPaymentOrders = dbContext.UnitPaymentOrderItems
+            //            .Include(upoItem => upoItem.UnitPaymentOrder)
+            //            .Where(upoItem => urnIds.Contains(upoItem.URNId))
+            //            .Select(upoItem => new
+            //            {
+            //                upoItem.URNId,
+            //                upoItem.UnitPaymentOrder.InvoiceNo,
+            //                upoItem.UnitPaymentOrder.UPONo,
+            //                upoItem.UnitPaymentOrder.VatNo
+            //            });
 
-		#endregion
+            //        var currencyCodes = epoItems.Select(epoItem => epoItem.CurrencyCode).Distinct().ToList();
+            //        var currencies = await _currencyProvider.GetCurrencyByCurrencyCodeList(currencyCodes);
 
-		public MemoryStream GenerateExcel(string no, string unit, string category, DateTime? dateFrom, DateTime? dateTo)
-		{
-			Tuple<List<ImportPurchasingBookViewModel>, int> Data = this.GetReport(no, unit, category, dateFrom, dateTo);
+            //        var reportResult = new LocalPurchasingBookReportViewModel();
+            //        foreach (var urnItem in urnItems)
+            //        {
+            //            var purchaseRequest = purchaseRequests.FirstOrDefault(f => f.Id.Equals(urnItem.PRId));
+            //            var unitPaymentOrder = unitPaymentOrders.FirstOrDefault(f => f.URNId.Equals(urnItem.URNId));
+            //            var epoItem = epoItems.FirstOrDefault(f => f.epoDetailIds.Contains(urnItem.EPODetailId));
+            //            var epoDetail = epoItem.Details.FirstOrDefault(f => f.Id.Equals(urnItem.EPODetailId));
+            //            var currency = currencies.FirstOrDefault(f => f.Code.Equals(epoItem.CurrencyCode));
 
-			DataTable result = new DataTable();
-			result.Columns.Add(new DataColumn() { ColumnName = "TGL", DataType = typeof(String) });
-			result.Columns.Add(new DataColumn() { ColumnName = "NOMOR NOTA", DataType = typeof(String) });
-			result.Columns.Add(new DataColumn() { ColumnName = "NAMA BARANG", DataType = typeof(String) });
-			result.Columns.Add(new DataColumn() { ColumnName = "TIPE", DataType = typeof(String) });
-			result.Columns.Add(new DataColumn() { ColumnName = "UNIT", DataType = typeof(String) });
-			result.Columns.Add(new DataColumn() { ColumnName = "NO PIB", DataType = typeof(String) });
-			result.Columns.Add(new DataColumn() { ColumnName = "NILAI", DataType = typeof(decimal) });
-			result.Columns.Add(new DataColumn() { ColumnName = "RATE", DataType = typeof(decimal) });
-			result.Columns.Add(new DataColumn() { ColumnName = "TOTAL", DataType = typeof(decimal ) });
+            //            decimal dpp = 0;
+            //            decimal dppCurrency = 0;
+            //            decimal ppn = 0;
 
-			List<(string, Enum, Enum)> mergeCells = new List<(string, Enum, Enum)>() { };
+            //            //default IDR
+            //            double currencyRate = 1;
+            //            var currencyCode = "IDR";
+            //            if (currency != null && !currency.Code.Equals("IDR"))
+            //            {
+            //                dppCurrency = (decimal)(epoDetail.PricePerDealUnit * urnItem.ReceiptQuantity);
+            //                currencyRate = currency.Rate.GetValueOrDefault();
+            //                currencyCode = currency.Code;
+            //            }
+            //            else
+            //                dpp = (decimal)(epoDetail.PricePerDealUnit * urnItem.ReceiptQuantity);
 
-			if (Data.Item2 == 0)
-			{
-				result.Rows.Add("", "", "", "", "", "", 0, 0, 0); // to allow column name to be generated properly for empty data as template
-			}
-			else
-			{
-				Dictionary<string, List<ImportPurchasingBookViewModel>> dataByCategory = new Dictionary<string, List<ImportPurchasingBookViewModel>>();
-				Dictionary<string, decimal> subTotalCategory = new Dictionary<string, decimal>();
+            //            if (epoItem.UseVat)
+            //                ppn = (decimal)(epoDetail.PricePerDealUnit * urnItem.ReceiptQuantity * 0.1);
 
-				foreach (ImportPurchasingBookViewModel data in Data.Item1)
-				{
-					//foreach (UnitReceiptNoteItemViewModel item in data.items)
-					//{
-						string categoryName = data.categoryName;
 
-						if (!dataByCategory.ContainsKey(categoryName)) dataByCategory.Add(categoryName, new List<ImportPurchasingBookViewModel> { });
-						dataByCategory[categoryName].Add(new ImportPurchasingBookViewModel
-						{
-							urnNo = data.urnNo,
-							receiptDate = data.receiptDate,
-							PIBNo = data.PIBNo,
-							unitName = data.unitName,
-							amount=data.amount,
-							amountIDR=data.amountIDR,
-							rate=data.rate,
-							productName=data.productName,
-							categoryName=data.categoryName
-							//items = new List<ImportPurchasingBookViewModel>() { item }
-						});
 
-						if (!subTotalCategory.ContainsKey(categoryName)) subTotalCategory.Add(categoryName, 0);
-						subTotalCategory[categoryName] += (data.amountIDR);
-					//}
-				}
+            //            var reportItem = new PurchasingReport()
+            //            {
+            //                CategoryName = purchaseRequest.CategoryName,
+            //                CategoryCode = purchaseRequest.CategoryCode,
+            //                CurrencyRate = (decimal)currencyRate,
+            //                DONo = urnItem.DONo,
+            //                DPP = dpp,
+            //                DPPCurrency = dppCurrency,
+            //                InvoiceNo = unitPaymentOrder?.InvoiceNo,
+            //                VATNo = unitPaymentOrder?.VatNo,
+            //                IPONo = epoItem.PONo,
+            //                VAT = ppn,
+            //                Total = (dpp + dppCurrency + ppn) * (decimal)currencyRate,
+            //                ProductName = urnItem.ProductName,
+            //                ReceiptDate = urnItem.ReceiptDate,
+            //                SupplierName = urnItem.SupplierName,
+            //                UnitName = urnItem.UnitCode,
+            //                UPONo = unitPaymentOrder?.UPONo,
+            //                URNNo = urnItem.URNNo,
+            //                IsUseVat = epoItem.UseVat,
+            //                CurrencyCode = currencyCode,
+            //                Quantity = urnItem.ReceiptQuantity,
+            //                Uom = urnItem.Uom
+            //            };
 
-				decimal total = 0;
-				int rowPosition = 1;
+            //            reportResult.Reports.Add(reportItem);
+            //        }
 
-				foreach (KeyValuePair<string, List<ImportPurchasingBookViewModel>> categoryName in dataByCategory)
-				{
-					foreach (ImportPurchasingBookViewModel data in categoryName.Value)
-					{
-						
-						result.Rows.Add(Convert.ToDateTime( data.receiptDate).ToShortDateString(), data.urnNo, data.productName, data.categoryName, data.unitName, data.PIBNo, Math.Round(data.amount, 2), Math.Round(data.rate, 2), Math.Round(data.amountIDR, 2));
-						rowPosition += 1;
-					}
-					result.Rows.Add("SUB TOTAL", "", "", "", "", "", 0, 0, Math.Round(subTotalCategory[categoryName.Key], 2));
-					rowPosition += 1;
+            //        reportResult.CategorySummaries = reportResult.Reports
+            //            .GroupBy(report => new { report.CategoryCode })
+            //            .Select(report => new Summary()
+            //            {
+            //                Category = report.Key.CategoryCode,
+            //                SubTotal = report.Sum(sum => sum.Total)
+            //            }).OrderBy(order => order.Category).ToList();
+            //        reportResult.CurrencySummaries = reportResult.Reports
+            //            .GroupBy(report => new { report.CurrencyCode })
+            //            .Select(report => new Summary()
+            //            {
+            //                CurrencyCode = report.Key.CurrencyCode,
+            //                SubTotal = report.Sum(sum => sum.DPP + sum.DPPCurrency + sum.VAT)
+            //            }).OrderBy(order => order.CurrencyCode).ToList();
+            //        reportResult.Reports = reportResult.Reports.OrderByDescending(order => order.ReceiptDate).ToList();
+            //        reportResult.GrandTotal = reportResult.Reports.Sum(sum => sum.Total);
+            //        reportResult.CategorySummaryTotal = reportResult.CategorySummaries.Sum(categorySummary => categorySummary.SubTotal);
 
-					mergeCells.Add(($"A{rowPosition}:H{rowPosition}", OfficeOpenXml.Style.ExcelHorizontalAlignment.Right, OfficeOpenXml.Style.ExcelVerticalAlignment.Bottom));
+            //        return reportResult;
+            //    }
+            //}
+            #endregion
 
-					total += subTotalCategory[categoryName.Key];
-				}
-				result.Rows.Add("TOTAL", "", "", "", "", "", 0, 0, Math.Round(total, 2));
-				rowPosition += 1;
+            return reportResult;
+        }
 
-				mergeCells.Add(($"A{rowPosition}:H{rowPosition}", OfficeOpenXml.Style.ExcelHorizontalAlignment.Right, OfficeOpenXml.Style.ExcelVerticalAlignment.Bottom));
-			}
+        public Task<LocalPurchasingBookReportViewModel> GetReport(string no, string unit, string category, DateTime? dateFrom, DateTime? dateTo)
+        {
+            return GetReportData(no, unit, category, dateFrom, dateTo);
+        }
 
-			return Excel.CreateExcel(new List<(DataTable, string, List<(string, Enum, Enum)>)>() { (result, "Report", mergeCells) }, true);
-		}
+        public async Task<MemoryStream> GenerateExcel(string no, string unit, string category, DateTime? dateFrom, DateTime? dateTo)
+        {
+            var result = await GetReport(no, unit, category, dateFrom, dateTo);
+            //var Data = reportResult.Reports;
+            var reportDataTable = new DataTable();
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "Tanggal", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "Supplier", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "Keterangan", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "No PO", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "No Surat Jalan", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "No Bon Penerimaan", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "No Invoice", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "No Faktur Pajak", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "No SPB/NI", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "Kategori", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "Unit", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "PIB Tanggal", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "PIB No", DataType = typeof(string) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "PIB BM", DataType = typeof(decimal) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "PIB PPH22", DataType = typeof(decimal) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "PIB PPN Impor", DataType = typeof(decimal) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "DPP", DataType = typeof(decimal) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "DPP Valas", DataType = typeof(decimal) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "PPN", DataType = typeof(decimal) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "Rate", DataType = typeof(decimal) });
+            reportDataTable.Columns.Add(new DataColumn() { ColumnName = "Total", DataType = typeof(decimal) });
 
-	}
+            var categoryDataTable = new DataTable();
+            categoryDataTable.Columns.Add(new DataColumn() { ColumnName = "Kategori", DataType = typeof(string) });
+            categoryDataTable.Columns.Add(new DataColumn() { ColumnName = "Total", DataType = typeof(decimal) });
+
+            var currencyDataTable = new DataTable();
+            currencyDataTable.Columns.Add(new DataColumn() { ColumnName = "Mata Uang", DataType = typeof(string) });
+            currencyDataTable.Columns.Add(new DataColumn() { ColumnName = "Total", DataType = typeof(decimal) });
+
+            if (result.Reports.Count > 0)
+            {
+                foreach (var report in result.Reports)
+                {
+                    reportDataTable.Rows.Add(report.ReceiptDate.ToString("dd/MM/yyyy"), report.SupplierName, report.ProductName, report.IPONo,
+                        report.DONo, report.URNNo, report.InvoiceNo, report.VATNo, report.UPONo, report.CategoryCode + " - " + report.CategoryName,
+                        report.UnitName, "", report.PIBNo, report.PIBBM, 0, 0, report.DPP, report.DPPCurrency, report.VAT, report.CurrencyRate, report.Total);
+                }
+                foreach (var categorySummary in result.CategorySummaries)
+                    categoryDataTable.Rows.Add(categorySummary.Category, categorySummary.SubTotal);
+
+                foreach (var currencySummary in result.CurrencySummaries)
+                    currencyDataTable.Rows.Add(currencySummary.CurrencyCode, currencySummary.SubTotal);
+            }
+
+            using (var package = new ExcelPackage())
+            {
+                var worksheet = package.Workbook.Worksheets.Add("Sheet 1");
+                worksheet.Cells["A1"].LoadFromDataTable(reportDataTable, true);
+                worksheet.Cells[$"A{1 + 3 + result.Reports.Count}"].LoadFromDataTable(categoryDataTable, true);
+                worksheet.Cells[$"A{1 + result.Reports.Count + 3 + result.CategorySummaries.Count + 3}"].LoadFromDataTable(currencyDataTable, true);
+
+                var stream = new MemoryStream();
+                package.SaveAs(stream);
+
+                return stream;
+            }
+        }
+
+    }
+
+    public interface IImportPurchasingBookReportFacade
+    {
+        Task<LocalPurchasingBookReportViewModel> GetReport(string no, string unit, string category, DateTime? dateFrom, DateTime? dateTo);
+        Task<MemoryStream> GenerateExcel(string no, string unit, string category, DateTime? dateFrom, DateTime? dateTo);
+    }
 }

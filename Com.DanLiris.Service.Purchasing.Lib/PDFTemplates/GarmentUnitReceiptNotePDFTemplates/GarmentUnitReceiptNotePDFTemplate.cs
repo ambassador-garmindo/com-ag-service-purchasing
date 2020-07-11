@@ -36,7 +36,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates.GarmentUnitReceiptNot
             Paragraph title = new Paragraph(titleString, header_font) { Alignment = Element.ALIGN_CENTER };
             document.Add(title);
 
-            string companyNameString = "PT DAN LIRIS";
+            string companyNameString = "PT AMBASSADOR GARMINDO";
             Paragraph companyName = new Paragraph(companyNameString, bold_font) { Alignment = Element.ALIGN_LEFT };
             document.Add(companyName);
 

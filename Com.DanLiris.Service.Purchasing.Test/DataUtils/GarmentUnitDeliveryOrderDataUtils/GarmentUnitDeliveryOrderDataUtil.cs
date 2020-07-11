@@ -1,5 +1,6 @@
 ﻿using Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitDeliveryOrderFacades;
 using Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitDeliveryOrderModel;
+using Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitReceiptNoteModel;
 using Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentUnitDeliveryOrderViewModel;
 using Com.DanLiris.Service.Purchasing.Test.DataUtils.GarmentUnitReceiptNoteDataUtils;
 using System;
@@ -66,6 +67,8 @@ namespace Com.DanLiris.Service.Purchasing.Test.DataUtils.GarmentUnitDeliveryOrde
                         Quantity = (double)(item.SmallQuantity - item.OrderQuantity),
                         UomId = item.UomId,
                         UomUnit = item.UomUnit,
+                        ReturUomId = item.UomId,
+                        ReturUomUnit = item.UomUnit,
                     });
             }
 
@@ -78,16 +81,25 @@ namespace Com.DanLiris.Service.Purchasing.Test.DataUtils.GarmentUnitDeliveryOrde
             await facade.Create(data);
             return data;
         }
-        public async Task<GarmentUnitDeliveryOrder> GetNewDataMultipleItem()
+
+        public async Task<GarmentUnitDeliveryOrder> GetTestDataMarketing()
+        {
+            var data = await GetNewData();
+            data.UnitDOType = "MARKETING";
+            await facade.Create(data);
+            return data;
+        }
+        public async Task<GarmentUnitDeliveryOrder> GetNewDataMultipleItem(GarmentUnitReceiptNote unitReceiptNote1 = null, GarmentUnitReceiptNote unitReceiptNote2 = null)
         {
             DateTimeOffset now = DateTimeOffset.Now;
             long nowTicks = now.Ticks;
 
-            var garmentUnitReceiptNote1 = await Task.Run(() => UNDataUtil.GetTestDataWithStorage());
-            var garmentUnitReceiptNote2 = await Task.Run(() => UNDataUtil.GetTestDataWithStorage(nowTicks + 1));
+            var garmentUnitReceiptNote1 = unitReceiptNote1 ?? await Task.Run(() => UNDataUtil.GetTestDataWithStorage());
+            var garmentUnitReceiptNote2 = unitReceiptNote2 ?? await Task.Run(() => UNDataUtil.GetTestDataWithStorage(nowTicks + 1));
             GarmentUnitDeliveryOrder garmentUnitDeliveryOrder = new GarmentUnitDeliveryOrder
             {
                 UnitDOType = "SAMPLE",
+                DOId= garmentUnitReceiptNote1.DOId,
                 UnitDODate = DateTimeOffset.Now,
                 UnitSenderId = garmentUnitReceiptNote1.UnitId,
                 UnitRequestCode = garmentUnitReceiptNote1.UnitCode,
@@ -125,6 +137,8 @@ namespace Com.DanLiris.Service.Purchasing.Test.DataUtils.GarmentUnitDeliveryOrde
                         Quantity = (double)(item.SmallQuantity - item.OrderQuantity),
                         UomId = item.UomId,
                         UomUnit = item.UomUnit,
+                        ReturUomId = item.UomId,
+                        ReturUomUnit = item.UomUnit,
                         DOCurrencyRate = garmentUnitReceiptNote1.DOCurrencyRate
                     });
             }
@@ -154,7 +168,9 @@ namespace Com.DanLiris.Service.Purchasing.Test.DataUtils.GarmentUnitDeliveryOrde
                         Quantity = (double)(item.SmallQuantity - item.OrderQuantity),
                         UomId = item.UomId,
                         UomUnit = item.UomUnit,
-                        DOCurrencyRate = garmentUnitReceiptNote1.DOCurrencyRate
+                        DOCurrencyRate = garmentUnitReceiptNote1.DOCurrencyRate,
+                        ReturUomId = item.UomId,
+                        ReturUomUnit = item.UomUnit,
                     });
             }
 
@@ -167,6 +183,16 @@ namespace Com.DanLiris.Service.Purchasing.Test.DataUtils.GarmentUnitDeliveryOrde
             var data = await GetNewDataMultipleItem();
             await facade.Create(data);
             return data;
+        }
+
+        public async Task<GarmentUnitDeliveryOrder> GetTestDataMultipleItemForURNProcess()
+        {
+            var data = await Task.Run(() => GetTestDataMultipleItem());
+
+            var data2= await GetNewDataMultipleItem();
+            data2.UnitDOFromId = data.Id;
+            await facade.Create(data2);
+            return data2;
         }
 
     }

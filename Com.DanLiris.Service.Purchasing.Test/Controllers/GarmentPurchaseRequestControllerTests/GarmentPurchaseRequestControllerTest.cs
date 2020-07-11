@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Com.DanLiris.Service.Purchasing.Lib.Helpers.ReadResponse;
 using Com.DanLiris.Service.Purchasing.Lib.Interfaces;
 using Com.DanLiris.Service.Purchasing.Lib.Models.GarmentInternalPurchaseOrderModel;
 using Com.DanLiris.Service.Purchasing.Lib.Models.GarmentPurchaseRequestModel;
@@ -10,6 +11,7 @@ using Com.DanLiris.Service.Purchasing.Test.Helpers;
 using Com.DanLiris.Service.Purchasing.WebApi.Controllers.v1.GarmentPurchaseRequestControllers;
 using Com.Moonlay.NetCore.Lib.Service;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using System;
@@ -33,7 +35,8 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.GarmentPurchaseReques
                 {
                     UId = null,
                     Buyer = new BuyerViewModel(),
-                    Unit = new UnitViewModel()
+                    Unit = new UnitViewModel(),
+                    SectionName = "SectionName"
                 };
             }
         }
@@ -232,6 +235,36 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.GarmentPurchaseReques
         }
 
         [Fact]
+        public void Should_Success_Get_All_Data_Dynamic()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+
+            mockFacade.Setup(x => x.ReadDynamic(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(new ReadResponse<dynamic>(new List<dynamic>(), 0, new Dictionary<string, string>()));
+
+            var mockMapper = new Mock<IMapper>();
+
+            GarmentPurchaseRequestController controller = GetController(mockFacade, null, mockMapper);
+            var response = controller.GetDynamic();
+            Assert.Equal((int)HttpStatusCode.OK, GetStatusCode(response));
+        }
+
+        [Fact]
+        public void Should_Error_Get_All_Data_Dynamic()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+
+            mockFacade.Setup(x => x.ReadDynamic(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Throws(new Exception());
+
+            var mockMapper = new Mock<IMapper>();
+
+            GarmentPurchaseRequestController controller = GetController(mockFacade, null, mockMapper);
+            var response = controller.GetDynamic();
+            Assert.Equal((int)HttpStatusCode.InternalServerError, GetStatusCode(response));
+        }
+
+        [Fact]
         public void Should_Success_Get_Data_By_Id()
         {
             var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
@@ -243,7 +276,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.GarmentPurchaseReques
             mockMapper.Setup(x => x.Map<GarmentPurchaseRequestViewModel>(It.IsAny<GarmentPurchaseRequest>()))
                 .Returns(ViewModel);
 
-            GarmentPurchaseRequestController controller = new GarmentPurchaseRequestController(GetServiceProvider().Object, mockMapper.Object, mockFacade.Object);
+            GarmentPurchaseRequestController controller = GetController(mockFacade, null, mockMapper);
             var response = controller.Get(It.IsAny<int>());
             Assert.Equal((int)HttpStatusCode.OK, GetStatusCode(response));
         }
@@ -261,6 +294,28 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.GarmentPurchaseReques
             GarmentPurchaseRequestController controller = new GarmentPurchaseRequestController(GetServiceProvider().Object, mockMapper.Object, mockFacade.Object);
             var response = controller.Get(It.IsAny<int>());
             Assert.Equal((int)HttpStatusCode.InternalServerError, GetStatusCode(response));
+        }
+
+        [Fact]
+        public void Should_Success_Get_PDF_By_Id()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+
+            mockFacade.Setup(x => x.ReadById(It.IsAny<int>()))
+                .Returns(new GarmentPurchaseRequest());
+
+            mockFacade.Setup(x => x.GeneratePdf(It.IsAny<GarmentPurchaseRequestViewModel>()))
+                .Returns(new System.IO.MemoryStream());
+
+            var mockMapper = new Mock<IMapper>();
+            mockMapper.Setup(x => x.Map<GarmentPurchaseRequestViewModel>(It.IsAny<GarmentPurchaseRequest>()))
+                .Returns(ViewModel);
+
+            GarmentPurchaseRequestController controller = GetController(mockFacade, null, mockMapper);
+            controller.ControllerContext.HttpContext.Request.Headers["Accept"] = "application/pdf";
+
+            var response = controller.Get(It.IsAny<int>());
+            Assert.NotNull(response.GetType().GetProperty("FileStream"));
         }
 
         [Fact]
@@ -352,6 +407,86 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.GarmentPurchaseReques
         }
 
         [Fact]
+        public async Task Should_Success_Delete_Data()
+        {
+            var validateMock = new Mock<IValidateService>();
+            var mockMapper = new Mock<IMapper>();
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.Delete(It.IsAny<int>(), It.IsAny<string>()))
+               .ReturnsAsync(1);
+
+            var controller = GetController(mockFacade, validateMock, mockMapper);
+
+            var response = await controller.Delete(It.IsAny<int>());
+            Assert.Equal((int)HttpStatusCode.OK, GetStatusCode(response));
+        }
+
+        [Fact]
+        public async Task Should_Error_Delete_Data()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.Delete(It.IsAny<int>(), It.IsAny<string>()))
+               .ThrowsAsync(new Exception());
+
+            var controller = GetController(mockFacade, null, new Mock<IMapper>());
+
+            var response = await controller.Delete(It.IsAny<int>());
+            Assert.Equal((int)HttpStatusCode.InternalServerError, GetStatusCode(response));
+        }
+
+        [Fact]
+        public async Task Should_Success_PRPost()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.PRPost(It.IsAny<List<long>>(), It.IsAny<string>()))
+               .ReturnsAsync(1);
+
+            var controller = GetController(mockFacade, null, new Mock<IMapper>());
+
+            var response = await controller.PRPost(It.IsAny<List<long>>());
+            Assert.Equal((int)HttpStatusCode.OK, GetStatusCode(response));
+        }
+
+        [Fact]
+        public async Task Should_Error_PRPost()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.PRPost(It.IsAny<List<long>>(), It.IsAny<string>()))
+               .ThrowsAsync(new Exception());
+
+            var controller = GetController(mockFacade, null, new Mock<IMapper>());
+
+            var response = await controller.PRPost(It.IsAny<List<long>>());
+            Assert.Equal((int)HttpStatusCode.InternalServerError, GetStatusCode(response));
+        }
+
+        [Fact]
+        public async Task Should_Success_PRUnpost()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.PRUnpost(It.IsAny<long>(), It.IsAny<string>()))
+               .ReturnsAsync(1);
+
+            var controller = GetController(mockFacade, null, new Mock<IMapper>());
+
+            var response = await controller.PRUnpost(It.IsAny<long>());
+            Assert.Equal((int)HttpStatusCode.OK, GetStatusCode(response));
+        }
+
+        [Fact]
+        public async Task Should_Error_PRUnpost()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.PRUnpost(It.IsAny<long>(), It.IsAny<string>()))
+               .ThrowsAsync(new Exception());
+
+            var controller = GetController(mockFacade, null, new Mock<IMapper>());
+
+            var response = await controller.PRUnpost(It.IsAny<long>());
+            Assert.Equal((int)HttpStatusCode.InternalServerError, GetStatusCode(response));
+        }
+
+        [Fact]
         public void Should_Success_Get_All_Data_By_Tags()
         {
             var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
@@ -395,5 +530,90 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.GarmentPurchaseReques
             var response = controller.GetByTags(null, "2018-10-31", "2018-10-31");
             Assert.Equal((int)HttpStatusCode.OK, GetStatusCode(response));
         }
+
+        [Fact]
+        public async Task Should_Success_PRApprove()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.PRApprove(It.IsAny<long>(), It.IsAny<string>()))
+               .ReturnsAsync(1);
+
+            var controller = GetController(mockFacade, null, new Mock<IMapper>());
+
+            var response = await controller.PRApprove(It.IsAny<long>());
+            Assert.Equal((int)HttpStatusCode.OK, GetStatusCode(response));
+        }
+
+        [Fact]
+        public async Task Should_Error_PRApprove()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.PRApprove(It.IsAny<long>(), It.IsAny<string>()))
+               .ThrowsAsync(new Exception());
+
+            var controller = GetController(mockFacade, null, new Mock<IMapper>());
+
+            var response = await controller.PRApprove(It.IsAny<long>());
+            Assert.Equal((int)HttpStatusCode.InternalServerError, GetStatusCode(response));
+        }
+
+        [Fact]
+        public async Task Should_Success_PRUnApprove()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.PRUnApprove(It.IsAny<long>(), It.IsAny<string>()))
+               .ReturnsAsync(1);
+
+            var controller = GetController(mockFacade, null, new Mock<IMapper>());
+
+            var response = await controller.PRUnApprove(It.IsAny<long>());
+            Assert.Equal((int)HttpStatusCode.OK, GetStatusCode(response));
+        }
+
+        [Fact]
+        public async Task Should_Error_PRUnApprove()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.PRUnApprove(It.IsAny<long>(), It.IsAny<string>()))
+               .ThrowsAsync(new Exception());
+
+            var controller = GetController(mockFacade, null, new Mock<IMapper>());
+
+            var response = await controller.PRUnApprove(It.IsAny<long>());
+            Assert.Equal((int)HttpStatusCode.InternalServerError, GetStatusCode(response));
+        }
+
+        private async Task<int> GetStatusCodePatch(Mock<IGarmentPurchaseRequestFacade> mockFacade, Mock<IMapper> mockMapper, long id)
+        {
+            GarmentPurchaseRequestController controller = GetController(mockFacade, null, mockMapper);
+
+            JsonPatchDocument<GarmentPurchaseRequest> patch = new JsonPatchDocument<GarmentPurchaseRequest>();
+            IActionResult response = await controller.Patch(id, patch);
+
+            return this.GetStatusCode(response);
+        }
+
+        [Fact]
+        public async Task Patch_ReturnNotFound()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.Patch(It.IsAny<long>(), It.IsAny<JsonPatchDocument<GarmentPurchaseRequest>>(), It.IsAny<string>()))
+               .ReturnsAsync(1);
+
+            int statusCode = await this.GetStatusCodePatch(mockFacade, new Mock<IMapper>(), 1);
+            Assert.Equal((int)HttpStatusCode.NoContent, statusCode);
+        }
+
+        [Fact]
+        public async Task Patch_ReturnInternalServerError()
+        {
+            var mockFacade = new Mock<IGarmentPurchaseRequestFacade>();
+            mockFacade.Setup(x => x.Patch(It.IsAny<long>(), It.IsAny<JsonPatchDocument<GarmentPurchaseRequest>>(), It.IsAny<string>()))
+               .ThrowsAsync(new Exception());
+
+            int statusCode = await this.GetStatusCodePatch(mockFacade, new Mock<IMapper>(), 1);
+            Assert.Equal((int)HttpStatusCode.InternalServerError, statusCode);
+        }
+
     }
 }

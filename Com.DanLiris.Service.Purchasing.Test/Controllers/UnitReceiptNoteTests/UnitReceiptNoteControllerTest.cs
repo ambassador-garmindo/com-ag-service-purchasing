@@ -365,7 +365,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.UnitReceiptNoteTests
             UnitReceiptNoteController controller = GetController(mockFacade, GetServiceProvider(), mockMapper);
             controller.ControllerContext.HttpContext.Request.Headers["Accept"] = "application/pdf";
             var response = controller.Get(It.IsAny<int>());
-            Assert.NotEqual(null, response.GetType().GetProperty("FileStream"));
+            Assert.NotNull(response.GetType().GetProperty("FileStream"));
         }
 
         [Fact]
@@ -572,6 +572,51 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.UnitReceiptNoteTests
 
             UnitReceiptNoteController controller = GetController(mockFacade, GetServiceProvider(), mockMapper);
             var response = await controller.Delete(It.IsAny<int>());
+            Assert.Equal((int)HttpStatusCode.InternalServerError, GetStatusCode(response));
+        }
+
+        [Fact]
+        public async Task Should_Success_Get_Payload_Creditor_Account_Get_ById()
+        {
+            var mockFacade = new Mock<IUnitReceiptNoteFacade>();
+
+            mockFacade.Setup(x => x.GetCreditorAccountDataByURNNo(It.IsAny<string>()))
+                .ReturnsAsync(new { test = 1 });
+
+            var mockMapper = new Mock<IMapper>();
+
+            UnitReceiptNoteController controller = GetController(mockFacade, GetServiceProvider(), mockMapper);
+            var response = await controller.GetCreditorAccountByURNNo(It.IsAny<string>());
+            Assert.Equal((int)HttpStatusCode.OK, GetStatusCode(response));
+        }
+
+        [Fact]
+        public async Task Should_Throws_Exception_Get_Payload_Creditor_Account_Get_ById_Null()
+        {
+            var mockFacade = new Mock<IUnitReceiptNoteFacade>();
+
+            mockFacade.Setup(x => x.GetCreditorAccountDataByURNNo(It.IsAny<string>()))
+                .ReturnsAsync(null);
+
+            var mockMapper = new Mock<IMapper>();
+
+            UnitReceiptNoteController controller = GetController(mockFacade, GetServiceProvider(), mockMapper);
+            var response = await controller.GetCreditorAccountByURNNo(It.IsAny<string>());
+            Assert.Equal((int)HttpStatusCode.InternalServerError, GetStatusCode(response));
+        }
+
+        [Fact]
+        public async Task Should_Throw_Exception_Get_Payload_Creditor_Account_Get_ById()
+        {
+            var mockFacade = new Mock<IUnitReceiptNoteFacade>();
+
+            mockFacade.Setup(x => x.GetCreditorAccountDataByURNNo(It.IsAny<string>()))
+                .Throws(new Exception());
+
+            var mockMapper = new Mock<IMapper>();
+
+            UnitReceiptNoteController controller = GetController(mockFacade, GetServiceProvider(), mockMapper);
+            var response = await controller.GetCreditorAccountByURNNo(It.IsAny<string>());
             Assert.Equal((int)HttpStatusCode.InternalServerError, GetStatusCode(response));
         }
     }

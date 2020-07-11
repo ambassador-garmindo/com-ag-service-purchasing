@@ -1,4 +1,6 @@
-﻿using Com.DanLiris.Service.Purchasing.Lib.Helpers;
+﻿using Com.DanLiris.Service.Purchasing.Lib.Enums;
+using Com.DanLiris.Service.Purchasing.Lib.Facades.InternalPO;
+using Com.DanLiris.Service.Purchasing.Lib.Helpers;
 using Com.DanLiris.Service.Purchasing.Lib.Interfaces;
 using Com.DanLiris.Service.Purchasing.Lib.Models.DeliveryOrderModel;
 using Com.DanLiris.Service.Purchasing.Lib.Models.ExternalPurchaseOrderModel;
@@ -17,7 +19,12 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using System.Threading.Tasks;
+using Com.DanLiris.Service.Purchasing.Lib.ViewModels.IntegrationViewModel;
+using System.Net.Http;
+using Com.DanLiris.Service.Purchasing.Lib.Utilities.CacheManager;
+using Com.DanLiris.Service.Purchasing.Lib.Utilities.CacheManager.CacheData;
 
 namespace Com.DanLiris.Service.Purchasing.Lib.Facades
 {
@@ -25,14 +32,21 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
     {
         private readonly PurchasingDbContext dbContext;
         private readonly DbSet<UnitPaymentOrder> dbSet;
-
+        private readonly IServiceProvider _serviceProvider;
+        private readonly IMemoryCacheManager _cacheManager;
         private string USER_AGENT = "Facade";
 
-        public UnitPaymentOrderFacade(PurchasingDbContext dbContext)
+        public UnitPaymentOrderFacade(IServiceProvider serviceProvider, PurchasingDbContext dbContext)
         {
             this.dbContext = dbContext;
             this.dbSet = dbContext.Set<UnitPaymentOrder>();
+            _serviceProvider = serviceProvider;
+            _cacheManager = serviceProvider.GetService<IMemoryCacheManager>();
         }
+
+        private List<IdCOAResult> Units => _cacheManager.Get(MemoryCacheConstant.Units, entry => { return new List<IdCOAResult>(); });
+        private List<IdCOAResult> Divisions => _cacheManager.Get(MemoryCacheConstant.Divisions, entry => { return new List<IdCOAResult>(); });
+        private List<CategoryCOAResult> Categories => _cacheManager.Get(MemoryCacheConstant.Categories, entry => { return new List<CategoryCOAResult>(); });
 
         public Tuple<List<UnitPaymentOrder>, int, Dictionary<string, string>> Read(int Page = 1, int Size = 25, string Order = "{}", string Keyword = null, string Filter = "{}")
         {
@@ -54,23 +68,23 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
                 SupplierId = s.SupplierId,
                 SupplierCode = s.SupplierCode,
                 SupplierName = s.SupplierName,
-                CategoryCode=s.CategoryCode,
-                CategoryId=s.CategoryId,
-                CategoryName=s.CategoryName,
+                CategoryCode = s.CategoryCode,
+                CategoryId = s.CategoryId,
+                CategoryName = s.CategoryName,
                 Date = s.Date,
                 UPONo = s.UPONo,
-                DueDate=s.DueDate,
-                UseIncomeTax=s.UseIncomeTax,
-                UseVat=s.UseVat,
-                CurrencyCode=s.CurrencyCode,
-                CurrencyDescription=s.CurrencyDescription,
-                CurrencyId=s.CurrencyId,
-                CurrencyRate=s.CurrencyRate,
+                DueDate = s.DueDate,
+                UseIncomeTax = s.UseIncomeTax,
+                UseVat = s.UseVat,
+                CurrencyCode = s.CurrencyCode,
+                CurrencyDescription = s.CurrencyDescription,
+                CurrencyId = s.CurrencyId,
+                CurrencyRate = s.CurrencyRate,
                 Items = s.Items.Select(i => new UnitPaymentOrderItem
                 {
                     URNNo = i.URNNo,
                     DONo = i.DONo,
-                    Details=i.Details.ToList()
+                    Details = i.Details.ToList()
                 }).ToList(),
                 CreatedBy = s.CreatedBy,
                 LastModifiedUtc = s.LastModifiedUtc,
@@ -99,16 +113,25 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
             return Result;
         }
 
+        public List<UnitPaymentOrder> ReadByEPONo(string no)
+        {
+            var Result = dbSet
+                .Include(m => m.Items)
+                    .ThenInclude(i => i.Details).Where(m => m.Items.Any(d => d.Details.Any(f => f.EPONo==no)))
+                .ToList();
+            return Result;
+        }
+
         public async Task<int> Create(UnitPaymentOrder model, string user, bool isImport, int clientTimeZoneOffset = 7)
         {
             int Created = 0;
 
-            using(var transaction = dbContext.Database.BeginTransaction())
+            using (var transaction = dbContext.Database.BeginTransaction())
             {
                 try
                 {
                     EntityExtension.FlagForCreate(model, user, USER_AGENT);
-                    model.UPONo = await GenerateNo(model, isImport, clientTimeZoneOffset);
+                    //model.UPONo = await GenerateNo(model, isImport, clientTimeZoneOffset);
                     foreach (var item in model.Items)
                     {
                         EntityExtension.FlagForCreate(item, user, USER_AGENT);
@@ -134,7 +157,17 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
                         }
                     }
 
-                    await dbContext.SaveChangesAsync();
+                    model.Position = (int)ExpeditionPosition.PURCHASING_DIVISION;
+
+                    model.UPONo = await GenerateNo(model, isImport, clientTimeZoneOffset);
+                    Created += await dbContext.SaveChangesAsync();
+
+                    await UpdateCreditorAccount(model);
+                    Created += await EditFulfillment(model, user);
+                    if (model.UseVat)
+                    {
+                        await AutoCreateJournalTransaction(model);
+                    }
                     transaction.Commit();
                 }
                 catch (Exception e)
@@ -143,6 +176,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
                     throw new Exception(e.Message);
                 }
             }
+
 
             return Created;
         }
@@ -218,7 +252,17 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
                             }
                         }
 
-                        await dbContext.SaveChangesAsync();
+                        Updated += await dbContext.SaveChangesAsync();
+
+                        await UpdateCreditorAccount(model);
+                        Updated += await EditFulfillment(model, user);
+
+                        if (model.UseVat)
+                        {
+                            await ReverseJournalTransaction(model.UPONo);
+                            await AutoCreateJournalTransaction(model);
+                        }
+
                         transaction.Commit();
                     }
                     else
@@ -272,7 +316,12 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
                         }
                     }
 
-                    await dbContext.SaveChangesAsync();
+                    Deleted += await dbContext.SaveChangesAsync();
+                    await DeleteCreditorAccount(model);
+                    Deleted += await RollbackFulfillment(model, user);
+
+                    if (model.UseVat)
+                        await ReverseJournalTransaction(model.UPONo);
                     transaction.Commit();
                 }
                 catch (Exception e)
@@ -295,7 +344,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
             {
                 TG = "G-";
             }
-            else if(model.DivisionName.ToUpper().Equals("UMUM") || 
+            else if (model.DivisionName.ToUpper().Equals("UMUM") ||
                 model.DivisionName.ToUpper().Equals("SPINNING") ||
                 model.DivisionName.ToUpper().Equals("DYEING & PRINTING") ||
                 model.DivisionName.ToUpper().Equals("UTILITY") ||
@@ -307,7 +356,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
             string no = $"{Year}-{Month}-{TG}{Supplier}-";
             int Padding = isImport ? 3 : 4;
 
-            var lastNo = await dbSet.Where(w => w.UPONo.StartsWith(no) && !w.UPONo.EndsWith("L") && !w.IsDeleted).OrderByDescending(o => o.UPONo).FirstOrDefaultAsync();
+            var lastNo = await dbSet.Where(w => !string.IsNullOrWhiteSpace(w.UPONo) && w.UPONo.StartsWith(no) && !w.UPONo.EndsWith("L") && !w.IsDeleted).OrderByDescending(o => o.UPONo).FirstOrDefaultAsync();
 
             if (lastNo == null)
             {
@@ -322,20 +371,20 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
 
         private void SetPOItemIdEPONo(UnitPaymentOrderDetail detail)
         {
-            ExternalPurchaseOrderDetail EPODetail = dbContext.ExternalPurchaseOrderDetails.Single(m => m.Id == detail.EPODetailId);
+            ExternalPurchaseOrderDetail EPODetail = dbContext.ExternalPurchaseOrderDetails.First(m => m.Id == detail.EPODetailId);
             detail.POItemId = EPODetail.POItemId;
 
-            detail.EPONo = dbContext.ExternalPurchaseOrders.Single(m => m.Items.Any(i => i.Id == EPODetail.EPOItemId)).EPONo;
+            detail.EPONo = dbContext.ExternalPurchaseOrders.First(m => m.Items.Any(i => i.Id == EPODetail.EPOItemId)).EPONo;
         }
 
         private void SetPaid(UnitPaymentOrderItem item, bool isPaid, string username)
         {
-            UnitReceiptNote unitReceiptNote = dbContext.UnitReceiptNotes.Include(a=>a.Items).Single(m => m.Id == item.URNId);
-            
+            UnitReceiptNote unitReceiptNote = dbContext.UnitReceiptNotes.Include(a => a.Items).First(m => m.Id == item.URNId);
+
             foreach (var itemURN in unitReceiptNote.Items)
             {
                 var detail = item.Details.FirstOrDefault(a => a.URNItemId == itemURN.Id);
-                if (detail!=null)
+                if (detail != null)
                 {
                     itemURN.IsPaid = isPaid;
                 }
@@ -343,7 +392,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
             bool flagIsPaid = true;
             foreach (var itemURNPaid in unitReceiptNote.Items)
             {
-                if (itemURNPaid.IsPaid==false)
+                if (itemURNPaid.IsPaid == false)
                 {
                     flagIsPaid = false;
                 }
@@ -354,8 +403,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
 
         private void SetStatus(UnitPaymentOrderDetail detail, string username)
         {
-            ExternalPurchaseOrderDetail EPODetail = dbContext.ExternalPurchaseOrderDetails.Single(m => m.Id == detail.EPODetailId);
-            InternalPurchaseOrderItem POItem = dbContext.InternalPurchaseOrderItems.Single(m => m.Id == EPODetail.POItemId);
+            ExternalPurchaseOrderDetail EPODetail = dbContext.ExternalPurchaseOrderDetails.First(m => m.Id == detail.EPODetailId);
+            InternalPurchaseOrderItem POItem = dbContext.InternalPurchaseOrderItems.First(m => m.Id == EPODetail.POItemId);
 
             List<long> EPODetailIds = dbContext.ExternalPurchaseOrderDetails.Where(m => m.POItemId == POItem.Id).Select(m => m.Id).ToList();
             List<long> URNItemIds = dbContext.UnitReceiptNoteItems.Where(m => EPODetailIds.Contains(m.EPODetailId)).Select(m => m.Id).ToList();
@@ -398,14 +447,14 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
             List<DateTimeOffset> DueDates = new List<DateTimeOffset>();
             foreach (var item in model.Items)
             {
-                var unitReceiptNoteDate = dbContext.UnitReceiptNotes.Single(m => m.Id == item.URNId).ReceiptDate;
+                var unitReceiptNoteDate = dbContext.UnitReceiptNotes.First(m => m.Id == item.URNId).ReceiptDate;
                 foreach (var detail in item.Details)
                 {
-                    var PaymentDueDays = dbContext.ExternalPurchaseOrders.Single(m => m.EPONo.Equals(detail.EPONo)).PaymentDueDays;
+                    var PaymentDueDays = dbContext.ExternalPurchaseOrders.First(m => m.EPONo.Equals(detail.EPONo)).PaymentDueDays;
                     DueDates.Add(unitReceiptNoteDate.AddDays(Double.Parse(PaymentDueDays ?? "0")));
                 }
             }
-            model.DueDate = DueDates.Min();
+            model.DueDate = DueDates.Max();
         }
 
         public Tuple<List<UnitPaymentOrder>, int, Dictionary<string, string>> ReadSpb(int Page = 1, int Size = 25, string Order = "{}", string Keyword = null, string Filter = "{}")
@@ -485,6 +534,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
                 }).ToList(),
                 CreatedBy = s.CreatedBy,
                 LastModifiedUtc = s.LastModifiedUtc,
+                Position = s.Position
             });
 
             Dictionary<string, string> FilterDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Filter);
@@ -581,11 +631,104 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
             });
 
             Dictionary<string, List<int>> FilterDictionary = JsonConvert.DeserializeObject<Dictionary<string, List<int>>>(Filter);
-            if(FilterDictionary.Keys.FirstOrDefault() == "position")
+            if (FilterDictionary.Keys.FirstOrDefault() == "position")
             {
                 List<int> filteredPosition = FilterDictionary.GetValueOrDefault("position");
                 Query = Query.Where(x => filteredPosition.Contains(x.Position));
             }
+
+            Dictionary<string, string> OrderDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Order);
+            Query = QueryHelper<UnitPaymentOrder>.ConfigureOrder(Query, OrderDictionary);
+
+            Pageable<UnitPaymentOrder> pageable = new Pageable<UnitPaymentOrder>(Query, Page - 1, Size);
+            List<UnitPaymentOrder> Data = pageable.Data.ToList();
+            int TotalData = pageable.TotalCount;
+
+            return Tuple.Create(Data, TotalData, OrderDictionary);
+        }
+
+        public Tuple<List<UnitPaymentOrder>, int, Dictionary<string, string>> ReadSpbForVerification(int Page = 1, int Size = 25, string Order = "{}", string Keyword = null, string Filter = "{}")
+        {
+            IQueryable<UnitPaymentOrder> Query = this.dbSet;
+
+            List<string> searchAttributes = new List<string>()
+            {
+                "UPONo", "DivisionName", "SupplierName", "Items.URNNo", "Items.DONo"
+            };
+
+            Query = QueryHelper<UnitPaymentOrder>.ConfigureSearch(Query, searchAttributes, Keyword);
+
+            Query = Query.Where(a => a.Position == 1 || a.Position == 6).Select(s => new UnitPaymentOrder
+            {
+                Id = s.Id,
+                DivisionId = s.DivisionId,
+                DivisionCode = s.DivisionCode,
+                DivisionName = s.DivisionName,
+                SupplierId = s.SupplierId,
+                SupplierCode = s.SupplierCode,
+                SupplierName = s.SupplierName,
+                CategoryId = s.CategoryId,
+                CategoryCode = s.CategoryCode,
+                CategoryName = s.CategoryName,
+                CurrencyId = s.CurrencyId,
+                CurrencyCode = s.CurrencyCode,
+                CurrencyRate = s.CurrencyRate,
+                CurrencyDescription = s.CurrencyDescription,
+                PaymentMethod = s.PaymentMethod,
+                InvoiceNo = s.InvoiceNo,
+                InvoiceDate = s.InvoiceDate,
+                PibNo = s.PibNo,
+                UseIncomeTax = s.UseIncomeTax,
+                IncomeTaxId = s.IncomeTaxId,
+                IncomeTaxName = s.IncomeTaxName,
+                IncomeTaxRate = s.IncomeTaxRate,
+                IncomeTaxNo = s.IncomeTaxNo,
+                IncomeTaxDate = s.IncomeTaxDate,
+                UseVat = s.UseVat,
+                VatNo = s.VatNo,
+                VatDate = s.VatDate,
+                Remark = s.Remark,
+                DueDate = s.DueDate,
+                Date = s.Date,
+                UPONo = s.UPONo,
+                Items = s.Items.Select(i => new UnitPaymentOrderItem
+                {
+                    UPOId = i.UPOId,
+                    URNId = i.URNId,
+                    URNNo = i.URNNo,
+                    DOId = i.DOId,
+                    DONo = i.DONo,
+                    Details = i.Details.Select(j => new UnitPaymentOrderDetail
+                    {
+                        Id = j.Id,
+                        UPOItemId = j.UPOItemId,
+                        URNItemId = j.URNItemId,
+                        EPONo = j.EPONo,
+                        PRId = j.PRId,
+                        PRNo = j.PRNo,
+                        PRItemId = j.PRItemId,
+                        ProductId = j.ProductId,
+                        ProductCode = j.ProductCode,
+                        ProductName = j.ProductName,
+                        ProductRemark = j.ProductRemark,
+                        ReceiptQuantity = j.ReceiptQuantity,
+                        UomId = j.UomId,
+                        UomUnit = j.UomUnit,
+                        PricePerDealUnit = j.PricePerDealUnit,
+                        PriceTotal = j.PriceTotal,
+                        PricePerDealUnitCorrection = j.PricePerDealUnitCorrection,
+                        PriceTotalCorrection = j.PriceTotalCorrection,
+                        QuantityCorrection = j.QuantityCorrection,
+                        //Duedate = s.DueDate,
+                    }).ToList()
+                }).ToList(),
+                CreatedBy = s.CreatedBy,
+                LastModifiedUtc = s.LastModifiedUtc,
+                Position = s.Position
+            });
+
+            Dictionary<string, string> FilterDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Filter);
+            Query = QueryHelper<UnitPaymentOrder>.ConfigureFilter(Query, FilterDictionary);
 
             Dictionary<string, string> OrderDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Order);
             Query = QueryHelper<UnitPaymentOrder>.ConfigureOrder(Query, OrderDictionary);
@@ -647,7 +790,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
                              jumlahhrg = c.PriceTotal,
                              ppn = a.UseVat == true ? (c.PriceTotal * 10) / 100 : 0,
                              total = c.PriceTotal + (a.UseVat == true ? (c.PriceTotal * 10) / 100 : 0),
-                             pph = a.IncomeTaxRate * c.PriceTotal,
+                             pph = (a.IncomeTaxRate * c.PriceTotal) / 100,
                              tglpr = d.Date,
                              nopr = c.PRNo,
                              tglbon = e.ReceiptDate,
@@ -868,6 +1011,288 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades
                 }
             }
             return Excel.CreateExcel(new List<KeyValuePair<DataTable, string>>() { new KeyValuePair<DataTable, string>(result, "Sheet1") }, true);
+        }
+
+        private async Task<int> EditFulfillment(UnitPaymentOrder model, string username)
+        {
+            var internalPOFacade = _serviceProvider.GetService<InternalPurchaseOrderFacade>();
+            int count = 0;
+
+            foreach (var item in model.Items)
+            {
+                foreach (var detail in item.Details)
+                {
+                    var fulfillment = await dbContext.InternalPurchaseOrderFulfillments.AsNoTracking()
+                        .FirstOrDefaultAsync(x => x.UnitReceiptNoteItemId == detail.URNItemId);
+
+                    if (fulfillment != null)
+                    {
+                        fulfillment.UnitPaymentOrderDetailId = detail.Id;
+                        fulfillment.UnitPaymentOrderId = model.Id;
+                        fulfillment.UnitPaymentOrderItemId = item.Id;
+                        fulfillment.InvoiceDate = model.InvoiceDate;
+                        fulfillment.InvoiceNo = model.InvoiceNo;
+                        fulfillment.InterNoteDate = model.Date;
+                        fulfillment.InterNoteNo = model.UPONo;
+                        fulfillment.InterNoteValue = detail.PriceTotal;
+                        fulfillment.InterNoteDueDate = model.DueDate;
+                        fulfillment.UnitPaymentOrderUseVat = model.UseVat;
+                        fulfillment.UnitPaymentOrderUseIncomeTax = model.UseIncomeTax;
+                        fulfillment.UnitPaymentOrderIncomeTaxDate = DateTimeOffset.MinValue;
+                        fulfillment.UnitPaymentOrderIncomeTaxNo = model.IncomeTaxNo;
+                        fulfillment.UnitPaymentOrderIncomeTaxRate = model.IncomeTaxRate;
+                        fulfillment.UnitPaymentOrderVatDate = model.VatDate;
+                        fulfillment.UnitPaymentOrderVatNo = model.VatNo;
+
+                        count += await internalPOFacade.UpdateFulfillmentAsync(fulfillment.Id, fulfillment, username);
+                    }
+                }
+
+            }
+
+
+            return count;
+        }
+
+        private async Task<int> RollbackFulfillment(UnitPaymentOrder model, string username)
+        {
+            var internalPOFacade = _serviceProvider.GetService<InternalPurchaseOrderFacade>();
+            int count = 0;
+            foreach (var item in model.Items)
+            {
+                foreach (var detail in item.Details)
+                {
+                    var fulfillment = await dbContext.InternalPurchaseOrderFulfillments.AsNoTracking()
+                        .FirstOrDefaultAsync(x => x.UnitPaymentOrderId == model.Id && x.UnitPaymentOrderItemId == item.Id && x.UnitPaymentOrderDetailId == detail.Id);
+
+                    if (fulfillment != null)
+                    {
+                        fulfillment.UnitPaymentOrderDetailId = 0;
+                        fulfillment.UnitPaymentOrderId = 0;
+                        fulfillment.UnitPaymentOrderItemId = 0;
+                        fulfillment.InvoiceDate = DateTimeOffset.MinValue;
+                        fulfillment.InvoiceNo = null;
+                        fulfillment.InterNoteDate = DateTimeOffset.MinValue;
+                        fulfillment.InterNoteNo = null;
+                        fulfillment.InterNoteValue = 0;
+                        fulfillment.InterNoteDueDate = DateTimeOffset.MinValue;
+                        fulfillment.UnitPaymentOrderUseVat = false;
+                        fulfillment.UnitPaymentOrderUseIncomeTax = false;
+                        fulfillment.UnitPaymentOrderIncomeTaxDate = DateTimeOffset.MinValue;
+                        fulfillment.UnitPaymentOrderIncomeTaxNo = null;
+                        fulfillment.UnitPaymentOrderIncomeTaxRate = 0;
+                        fulfillment.UnitPaymentOrderVatDate = DateTimeOffset.MinValue;
+                        fulfillment.UnitPaymentOrderVatNo = null;
+
+                        count += await internalPOFacade.UpdateFulfillmentAsync(fulfillment.Id, fulfillment, username);
+                    }
+                }
+
+            }
+            return count;
+        }
+
+        private async Task UpdateCreditorAccount(UnitPaymentOrder model)
+        {
+            List<CreditorAccountViewModel> data = new List<CreditorAccountViewModel>();
+
+            foreach (var item in model.Items)
+            {
+                data.Add(new CreditorAccountViewModel()
+                {
+                    Code = item.URNNo,
+                    SupplierCode = model.SupplierCode,
+                    InvoiceNo = model.InvoiceNo
+                });
+            }
+
+            var postedData = new
+            {
+                MemoNo = model.UPONo,
+                model.InvoiceNo,
+                MemoDate = model.Date,
+                CreditorAccounts = data
+            };
+
+            string creditorAccountUri = "creditor-account/unit-payment-order";
+            var httpClient = (IHttpClientService)_serviceProvider.GetService(typeof(IHttpClientService));
+            var response = await httpClient.PutAsync($"{APIEndpoint.Finance}{creditorAccountUri}", new StringContent(JsonConvert.SerializeObject(postedData).ToString(), Encoding.UTF8, General.JsonMediaType));
+
+            response.EnsureSuccessStatusCode();
+        }
+
+        private async Task DeleteCreditorAccount(UnitPaymentOrder model)
+        {
+            List<CreditorAccountViewModel> data = new List<CreditorAccountViewModel>();
+
+            foreach (var item in model.Items)
+            {
+                data.Add(new CreditorAccountViewModel()
+                {
+                    Code = item.URNNo,
+                    SupplierCode = model.SupplierCode,
+                    InvoiceNo = model.InvoiceNo
+                });
+            }
+
+            var postedData = new
+            {
+                CreditorAccounts = data
+            };
+
+            string creditorAccountUri = "creditor-account/unit-payment-order";
+            var httpClient = (IHttpClientService)_serviceProvider.GetService(typeof(IHttpClientService));
+            var response = await httpClient.PutAsync($"{APIEndpoint.Finance}{creditorAccountUri}", new StringContent(JsonConvert.SerializeObject(postedData).ToString(), Encoding.UTF8, General.JsonMediaType));
+
+            response.EnsureSuccessStatusCode();
+        }
+
+        private async Task AutoCreateJournalTransaction(UnitPaymentOrder model)
+        {
+            var journalTransactionToPost = new JournalTransaction()
+            {
+                Date = model.Date,
+                Description = "Surat Perintah Bayar",
+                ReferenceNo = model.UPONo,
+                Status = "POSTED",
+                Items = new List<JournalTransactionItem>()
+            };
+
+            var journalDebitItems = new List<JournalTransactionItem>();
+            var journalCreditItems = new List<JournalTransactionItem>();
+
+            //journal
+            var inVATCOA = "1509.00";
+
+            int.TryParse(model.DivisionId, out var divisionId);
+            var division = Divisions.FirstOrDefault(entity => entity.Id == divisionId);
+            if (division == null)
+            {
+                division = new IdCOAResult()
+                {
+                    COACode = "0"
+                };
+            }
+
+            var urnIds = model.Items.Select(item => item.URNId).ToList();
+            var unitReceiptNotes = dbContext.UnitReceiptNotes.Include(entity => entity.Items).Where(entity => urnIds.Contains(entity.Id)).ToList();
+
+            var prIds = unitReceiptNotes.SelectMany(entity => entity.Items).Select(item => item.PRId).ToList();
+            var purchaseRequests = dbContext.PurchaseRequests.Include(entity => entity.Items).Where(entity => prIds.Contains(entity.Id)).ToList();
+
+            foreach (var item in model.Items)
+            {
+                var unitReceiptNote = unitReceiptNotes.FirstOrDefault(entity => entity.Id == item.URNId);
+
+                int.TryParse(unitReceiptNote.UnitId, out var unitId);
+                var unit = Units.FirstOrDefault(entity => entity.Id == unitId);
+                if (unit == null)
+                {
+                    unit = new IdCOAResult()
+                    {
+                        COACode = "00"
+                    };
+                }
+
+                foreach (var urnItem in unitReceiptNote.Items)
+                {
+                    var purchaseRequest = purchaseRequests.FirstOrDefault(entity => entity.Id == urnItem.PRId);
+
+                    int.TryParse(purchaseRequest.CategoryId, out var categoryId);
+                    var category = Categories.FirstOrDefault(entity => entity._id == categoryId);
+                    if (category == null)
+                    {
+                        category = new CategoryCOAResult()
+                        {
+                            ImportDebtCOA = "9999.00",
+                            LocalDebtCOA = "9999.00",
+                            PurchasingCOA = "9999.00",
+                            StockCOA = "9999.00"
+                        };
+                    }
+                    else
+                    {
+                        if (string.IsNullOrEmpty(category.ImportDebtCOA))
+                        {
+                            category.ImportDebtCOA = "9999.00";
+                        }
+                        if (string.IsNullOrEmpty(category.LocalDebtCOA))
+                        {
+                            category.LocalDebtCOA = "9999.00";
+                        }
+                        if (string.IsNullOrEmpty(category.PurchasingCOA))
+                        {
+                            category.PurchasingCOA = "9999.00";
+                        }
+                        if (string.IsNullOrEmpty(category.StockCOA))
+                        {
+                            category.StockCOA = "9999.00";
+                        }
+                    }
+
+                    var total = 0.1 * (urnItem.PricePerDealUnit * urnItem.ReceiptQuantity);
+                    journalCreditItems.Add(new JournalTransactionItem()
+                    {
+                        COA = new COA()
+                        {
+                            Code = unitReceiptNote.SupplierIsImport ? $"{category.ImportDebtCOA}.{division.COACode}.{unit.COACode}" : $"{category.LocalDebtCOA}.{division.COACode}.{unit.COACode}"
+                        },
+                        Credit = (decimal)total
+                    });
+
+                    journalDebitItems.Add(new JournalTransactionItem()
+                    {
+                        COA = new COA()
+                        {
+                            Code = $"{inVATCOA}.{division.COACode}.{unit.COACode}"
+                        },
+                        Debit = (decimal)total
+                    });
+                }
+            }
+
+
+            journalDebitItems = journalDebitItems.GroupBy(grouping => grouping.COA.Code).Select(s => new JournalTransactionItem()
+            {
+                COA = new COA()
+                {
+                    Code = s.Key
+                },
+                Debit = s.Sum(sum => Math.Round(sum.Debit.GetValueOrDefault(), 4)),
+                Credit = 0,
+                Remark = string.Join("\n", s.Select(grouped => grouped.Remark).ToList())
+            }).ToList();
+            journalTransactionToPost.Items.AddRange(journalDebitItems);
+
+            journalCreditItems = journalCreditItems.GroupBy(grouping => grouping.COA.Code).Select(s => new JournalTransactionItem()
+            {
+                COA = new COA()
+                {
+                    Code = s.Key
+                },
+                Debit = 0,
+                Credit = s.Sum(sum => Math.Round(sum.Credit.GetValueOrDefault(), 4)),
+                Remark = string.Join("\n", s.Select(grouped => grouped.Remark).ToList())
+            }).ToList();
+            journalTransactionToPost.Items.AddRange(journalCreditItems);
+
+            if (journalTransactionToPost.Items.Any(item => item.COA.Code.Split(".").FirstOrDefault().Equals("9999")))
+                journalTransactionToPost.Status = "DRAFT";
+
+            string journalTransactionUri = "journal-transactions";
+            var httpClient = (IHttpClientService)_serviceProvider.GetService(typeof(IHttpClientService));
+            var response = await httpClient.PostAsync($"{APIEndpoint.Finance}{journalTransactionUri}", new StringContent(JsonConvert.SerializeObject(journalTransactionToPost).ToString(), Encoding.UTF8, General.JsonMediaType));
+
+            response.EnsureSuccessStatusCode();
+        }
+
+        private async Task ReverseJournalTransaction(string referenceNo)
+        {
+            string journalTransactionUri = $"journal-transactions/reverse-transactions/{referenceNo}";
+            var httpClient = (IHttpClientService)_serviceProvider.GetService(typeof(IHttpClientService));
+            var response = await httpClient.PostAsync($"{APIEndpoint.Finance}{journalTransactionUri}", new StringContent(JsonConvert.SerializeObject(new object()).ToString(), Encoding.UTF8, General.JsonMediaType));
+
+            response.EnsureSuccessStatusCode();
         }
     }
 }

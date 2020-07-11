@@ -2,6 +2,7 @@
 using Com.DanLiris.Service.Purchasing.Lib.Facades.Expedition;
 using Com.DanLiris.Service.Purchasing.Lib.Models.Expedition;
 using Com.DanLiris.Service.Purchasing.Lib.Services;
+using Com.DanLiris.Service.Purchasing.Lib.ViewModels.Expedition;
 using Com.DanLiris.Service.Purchasing.Test.DataUtils.ExpeditionDataUtil;
 using System;
 using System.Collections.Generic;
@@ -49,8 +50,23 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.PurchasingDocumentExpedit
             DateTimeOffset tomorrow = DateTimeOffset.UtcNow.AddDays(1);
             var Response = this.FacadeExpedition.Read();
             await this.FacadeExpedition.UnitPaymentOrderVerification(model, "Unit Test");
-            var Report = this.Facade.GetReport("", "", "", model.VerifyDate, tomorrow, 1,25, "{}", 7);
-            Assert.NotEqual(Report.Item1.Count, 0);
+            var Report = this.Facade.GetReport("", "", "", model.VerifyDate, tomorrow, 1,25, "{}", 7, "not-history");
+            Assert.NotEmpty(Report.Item1);
         }
+
+        [Fact]
+        public async Task Should_Success_Get_Report_Data_History()
+        {
+            PurchasingDocumentExpedition model = await DataUtil.GetTestData();
+            model.Position = (ExpeditionPosition)6;
+            model.VerifyDate = DateTimeOffset.UtcNow;
+            DateTimeOffset tomorrow = DateTimeOffset.UtcNow.AddDays(1);
+            var Response = this.FacadeExpedition.Read();
+            await this.FacadeExpedition.UnitPaymentOrderVerification(model, "Unit Test");
+            var Report = this.Facade.GetReport("", "", "", model.VerifyDate, tomorrow, 1, 25, "{}", 7, "history");
+            Assert.NotEmpty(Report.Item1);
+        }
+
+        
     }
 }

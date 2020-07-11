@@ -22,7 +22,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Helpers
         }
         public Task<HttpResponseMessage> GetAsync(string url)
         {
-            return Task.Run(() => new HttpResponseMessage());
+            return Task.Run(() => new HttpResponseMessage() { Content = new StringContent("{data : {}}")});
         }
 
         public Task<HttpResponseMessage> PostAsync(string url, HttpContent content)
@@ -31,6 +31,11 @@ namespace Com.DanLiris.Service.Purchasing.Test.Helpers
         }
 
         public Task<HttpResponseMessage> DeleteAsync(string url)
+        {
+            return Task.Run(() => new HttpResponseMessage());
+        }
+
+        public Task<HttpResponseMessage> PatchAsync(string url, HttpContent content)
         {
             return Task.Run(() => new HttpResponseMessage());
         }

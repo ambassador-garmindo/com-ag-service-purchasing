@@ -32,9 +32,9 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.GarmentInvoiceTests
 	[Collection("TestServerFixture Collection")]
 	public class GarmentInvoicesControllerTest
 	{
-		private const string MediaType = "application/json";
+		//private const string MediaType = "application/json";
 		private readonly string URI = "v1/garment-invoices";
-		private readonly string USERNAME = "dev2";
+		//private readonly string USERNAME = "dev2";
 
 		private GarmentInvoiceViewModel ViewModel
 		{
@@ -510,7 +510,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.GarmentInvoiceTests
 			controller.ControllerContext.HttpContext.Request.Headers["x-timezone-offset"] = "0";
 
 			var response = controller.GetIncomePDF(It.IsAny<int>());
-			Assert.NotEqual(null, response.GetType().GetProperty("FileStream"));
+			Assert.NotNull(response.GetType().GetProperty("FileStream"));
 		}
 
 		[Fact]
@@ -553,7 +553,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.GarmentInvoiceTests
 			controller.ControllerContext.HttpContext.Request.Headers["x-timezone-offset"] = "0";
 
 			var response = controller.GetVatPDF(It.IsAny<int>());
-			Assert.NotEqual(null, response.GetType().GetProperty("FileStream"));
+			Assert.NotNull(response.GetType().GetProperty("FileStream"));
 		}
 
 	}

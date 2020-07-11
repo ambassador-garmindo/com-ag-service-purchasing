@@ -4,9 +4,12 @@ using Com.DanLiris.Service.Purchasing.Lib.Helpers.ReadResponse;
 using Com.DanLiris.Service.Purchasing.Lib.Interfaces;
 using Com.DanLiris.Service.Purchasing.Lib.Models.BankExpenditureNoteModel;
 using Com.DanLiris.Service.Purchasing.Lib.Models.Expedition;
+using Com.DanLiris.Service.Purchasing.Lib.Models.UnitPaymentOrderModel;
 using Com.DanLiris.Service.Purchasing.Lib.Services;
 using Com.DanLiris.Service.Purchasing.Lib.ViewModels.BankExpenditureNote;
 using Com.DanLiris.Service.Purchasing.Lib.ViewModels.IntegrationViewModel;
+using Com.DanLiris.Service.Purchasing.Lib.ViewModels.NewIntegrationViewModel;
+//using Com.DanLiris.Service.Purchasing.Lib.ViewModels.IntegrationViewModel;
 using Com.Moonlay.Models;
 using Com.Moonlay.NetCore.Lib;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +29,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
         private readonly PurchasingDbContext dbContext;
         private readonly DbSet<BankExpenditureNoteModel> dbSet;
         private readonly DbSet<BankExpenditureNoteDetailModel> detailDbSet;
+        private readonly DbSet<UnitPaymentOrder> unitPaymentOrderDbSet;
         private readonly IBankDocumentNumberGenerator bankDocumentNumberGenerator;
         public readonly IServiceProvider serviceProvider;
 
@@ -38,6 +42,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
             this.bankDocumentNumberGenerator = new BankDocumentNumberGenerator(dbContext);
             dbSet = dbContext.Set<BankExpenditureNoteModel>();
             detailDbSet = dbContext.Set<BankExpenditureNoteDetailModel>();
+            unitPaymentOrderDbSet = dbContext.Set<UnitPaymentOrder>();
             this.serviceProvider = serviceProvider;
         }
 
@@ -193,7 +198,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
                     DeleteDailyBankTransaction(model.DocumentNo, identityService);
                     CreateDailyBankTransaction(model, identityService);
                     UpdateCreditorAccount(model, identityService);
-                    ReverseJournalTransaction(model.DocumentNo);
+                    ReverseJournalTransaction(model);
                     CreateJournalTransaction(model, identityService);
                     transaction.Commit();
                 }
@@ -248,7 +253,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
 
                     dbSet.Add(model);
                     Created = await dbContext.SaveChangesAsync();
-                    CreateJournalTransaction(model, identityService);
+                    await CreateJournalTransaction(model, identityService);
                     CreateDailyBankTransaction(model, identityService);
                     CreateCreditorAccount(model, identityService);
                     transaction.Commit();
@@ -263,16 +268,21 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
             return Created;
         }
 
-        private void CreateJournalTransaction(BankExpenditureNoteModel model, IdentityService identityService)
+        private async Task CreateJournalTransaction(BankExpenditureNoteModel model, IdentityService identityService)
         {
+            //var unitPaymentOrderIds = model.Details.Select(detail => detail.UnitPaymentOrderId).ToList();
+            //var unitPaymentOrders = dbContext.UnitPaymentOrders.Where(unitPaymentOrder => unitPaymentOrderIds.Contains(unitPaymentOrder.Id)).ToList();
             var items = new List<JournalTransactionItem>();
             foreach (var detail in model.Details)
             {
+                //var unitPaymentOrder = unitPaymentOrders.FirstOrDefault(entity => entity.Id == detail.UnitPaymentOrderId);
                 var sumDataByUnit = detail.Items.GroupBy(g => g.UnitCode).Select(s => new
                 {
-                    s.First().UnitCode,
+                    UnitCode = s.Key,
                     Total = s.Sum(sm => sm.Price)
                 });
+
+                
 
                 foreach (var datum in sumDataByUnit)
                 {
@@ -282,18 +292,46 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
                         {
                             Code = COAGenerator.GetDebtCOA(model.SupplierImport, detail.DivisionName, datum.UnitCode)
                         },
-                        Debit = datum.Total
+                        Debit = Convert.ToDecimal(datum.Total),
+                        Remark = detail.UnitPaymentOrderNo + " / " + detail.InvoiceNo
                     };
+
+                    var vatCOA = "";
+                    if (detail.Vat > 0)
+                    {
+                        if (model.SupplierImport)
+                        {
+                            vatCOA = "1510.00." + COAGenerator.GetDivisionAndUnitCOACode(detail.DivisionName, datum.UnitCode);
+                        }
+                        else
+                        {
+                            vatCOA = "1509.00." + COAGenerator.GetDivisionAndUnitCOACode(detail.DivisionName, datum.UnitCode);
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(vatCOA))
+                    {
+                        var vatItem = new JournalTransactionItem()
+                        {
+                            COA = new COA()
+                            {
+                                Code = vatCOA
+                            },
+                            Debit = Convert.ToDecimal(datum.Total * 0.1)
+                        };
+
+                        items.Add(vatItem);
+                    }
 
                     items.Add(item);
                 }
             }
 
-            items = items.GroupBy(g => g.COA.Code).Select(s => new JournalTransactionItem()
-            {
-                COA = s.First().COA,
-                Debit = s.Sum(sm => sm.Debit)
-            }).ToList();
+            //items = items.GroupBy(g => g.COA.Code).Select(s => new JournalTransactionItem()
+            //{
+            //    COA = s.First().COA,
+            //    Debit = s.Sum(sm => Math.Round(sm.Debit.GetValueOrDefault(), 4))
+            //}).ToList();
 
             var bankJournalItem = new JournalTransactionItem()
             {
@@ -301,7 +339,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
                 {
                     Code = model.BankAccountCOA
                 },
-                Credit = items.Sum(s => s.Debit)
+                Credit = items.Sum(s => Math.Round(s.Debit.GetValueOrDefault(), 4))
             };
             items.Add(bankJournalItem);
 
@@ -316,16 +354,20 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
             string journalTransactionUri = "journal-transactions";
             //var httpClient = new HttpClientService(identityService);
             var httpClient = (IHttpClientService)serviceProvider.GetService(typeof(IHttpClientService));
-            var response = httpClient.PostAsync($"{APIEndpoint.Finance}{journalTransactionUri}", new StringContent(JsonConvert.SerializeObject(modelToPost).ToString(), Encoding.UTF8, General.JsonMediaType)).Result;
+            var response = await httpClient.PostAsync($"{APIEndpoint.Finance}{journalTransactionUri}", new StringContent(JsonConvert.SerializeObject(modelToPost).ToString(), Encoding.UTF8, General.JsonMediaType));
             response.EnsureSuccessStatusCode();
         }
 
-        private void ReverseJournalTransaction(string referenceNo)
+        private void ReverseJournalTransaction(BankExpenditureNoteModel model)
         {
-            string journalTransactionUri = $"journal-transactions/reverse-transactions/{referenceNo}";
-            var httpClient = (IHttpClientService)serviceProvider.GetService(typeof(IHttpClientService));
-            var response = httpClient.PostAsync($"{APIEndpoint.Finance}{journalTransactionUri}", new StringContent(JsonConvert.SerializeObject(new object()).ToString(), Encoding.UTF8, General.JsonMediaType)).Result;
-            response.EnsureSuccessStatusCode();
+            foreach (var detail in model.Details)
+            {
+                //string journalTransactionUri = $"journal-transactions/reverse-transactions/{model.DocumentNo + "/" + detail.UnitPaymentOrderNo}";
+                string journalTransactionUri = $"journal-transactions/reverse-transactions/{model.DocumentNo}";
+                var httpClient = (IHttpClientService)serviceProvider.GetService(typeof(IHttpClientService));
+                var response = httpClient.PostAsync($"{APIEndpoint.Finance}{journalTransactionUri}", new StringContent(JsonConvert.SerializeObject(new object()).ToString(), Encoding.UTF8, General.JsonMediaType)).Result;
+                response.EnsureSuccessStatusCode();
+            }
         }
 
         public async Task<int> Delete(int Id, IdentityService identityService)
@@ -342,7 +384,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
             {
                 try
                 {
-                    BankExpenditureNoteModel bankExpenditureNote = dbContext.BankExpenditureNotes.Single(p => p.Id == Id);
+                    BankExpenditureNoteModel bankExpenditureNote = dbContext.BankExpenditureNotes.Include(entity => entity.Details).Single(p => p.Id == Id);
 
                     ICollection<BankExpenditureNoteDetailModel> Details = new List<BankExpenditureNoteDetailModel>(dbContext.BankExpenditureNoteDetails.Where(p => p.BankExpenditureNoteId.Equals(Id)));
 
@@ -382,7 +424,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
                     Count = await dbContext.SaveChangesAsync();
                     DeleteDailyBankTransaction(bankExpenditureNote.DocumentNo, identityService);
                     DeleteCreditorAccount(bankExpenditureNote, identityService);
-                    ReverseJournalTransaction(bankExpenditureNote.DocumentNo);
+                    ReverseJournalTransaction(bankExpenditureNote);
                     transaction.Commit();
                 }
                 catch (DbUpdateConcurrencyException e)
@@ -402,55 +444,34 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
 
         public ReadResponse<object> GetAllByPosition(int Page, int Size, string Order, string Keyword, string Filter)
         {
-            IQueryable<PurchasingDocumentExpedition> Query = dbContext.PurchasingDocumentExpeditions;
+            IQueryable<PurchasingDocumentExpedition> query = dbContext.PurchasingDocumentExpeditions;
 
-            Query = Query
-                .Select(s => new PurchasingDocumentExpedition
-                {
-                    Id = s.Id,
-                    UnitPaymentOrderNo = s.UnitPaymentOrderNo,
-                    UPODate = s.UPODate,
-                    DueDate = s.DueDate,
-                    InvoiceNo = s.InvoiceNo,
-                    SupplierCode = s.SupplierCode,
-                    SupplierName = s.SupplierName,
-                    CategoryCode = s.CategoryCode,
-                    CategoryName = s.CategoryName,
-                    DivisionCode = s.DivisionCode,
-                    DivisionName = s.DivisionName,
-                    TotalPaid = s.TotalPaid,
-                    Currency = s.Currency,
-                    Position = s.Position,
-                    VerifyDate = s.VerifyDate,
-                    IncomeTax = s.IncomeTax,
-                    Vat = s.Vat,
-                    IsPaid = s.IsPaid,
-                    PaymentMethod = s.PaymentMethod,
-                    Items = s.Items.Where(w => w.PurchasingDocumentExpeditionId == s.Id).ToList(),
-                    LastModifiedUtc = s.LastModifiedUtc
-                });
+            query = query.Include(i => i.Items);
 
-            List<string> searchAttributes = new List<string>()
+            if (!string.IsNullOrWhiteSpace(Keyword))
             {
-                "UnitPaymentOrderNo", "SupplierName", "DivisionName", "SupplierCode", "InvoiceNo"
-            };
+                List<string> searchAttributes = new List<string>()
+                {
+                    "UnitPaymentOrderNo", "SupplierName", "DivisionName", "SupplierCode", "InvoiceNo"
+                };
 
-            Query = QueryHelper<PurchasingDocumentExpedition>.ConfigureSearch(Query, searchAttributes, Keyword);
+                query = QueryHelper<PurchasingDocumentExpedition>.ConfigureSearch(query, searchAttributes, Keyword);
+            }
 
             if (Filter.Contains("verificationFilter"))
             {
                 Filter = "{}";
                 List<ExpeditionPosition> positions = new List<ExpeditionPosition> { ExpeditionPosition.SEND_TO_PURCHASING_DIVISION, ExpeditionPosition.SEND_TO_ACCOUNTING_DIVISION, ExpeditionPosition.SEND_TO_CASHIER_DIVISION };
-                Query = Query.Where(p => positions.Contains(p.Position));
+                query = query.Where(p => positions.Contains(p.Position));
             }
 
             Dictionary<string, string> FilterDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Filter);
-            Query = QueryHelper<PurchasingDocumentExpedition>.ConfigureFilter(Query, FilterDictionary);
+            query = QueryHelper<PurchasingDocumentExpedition>.ConfigureFilter(query, FilterDictionary);
 
             Dictionary<string, string> OrderDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Order);
-            Query = QueryHelper<PurchasingDocumentExpedition>.ConfigureOrder(Query, OrderDictionary);
+            query = QueryHelper<PurchasingDocumentExpedition>.ConfigureOrder(query, OrderDictionary);
 
-            Pageable<PurchasingDocumentExpedition> pageable = new Pageable<PurchasingDocumentExpedition>(Query, Page - 1, Size);
+            Pageable<PurchasingDocumentExpedition> pageable = new Pageable<PurchasingDocumentExpedition>(query, Page - 1, Size);
             List<PurchasingDocumentExpedition> Data = pageable.Data.ToList();
             int TotalData = pageable.TotalCount;
 
@@ -571,18 +592,18 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
         {
             DailyBankTransactionViewModel modelToPost = new DailyBankTransactionViewModel()
             {
-                Bank = new AccountBankViewModel()
+                Bank = new ViewModels.NewIntegrationViewModel.AccountBankViewModel()
                 {
-                    _id = model.BankId,
-                    code = model.BankCode,
-                    accountName = model.BankAccountName,
-                    accountNumber = model.BankAccountNumber,
-                    bankCode = model.BankCode,
-                    bankName = model.BankName,
-                    currency = new CurrencyViewModel()
+                    Id = model.BankId,
+                    Code = model.BankCode,
+                    AccountName = model.BankAccountName,
+                    AccountNumber = model.BankAccountNumber,
+                    BankCode = model.BankCode,
+                    BankName = model.BankName,
+                    Currency = new ViewModels.NewIntegrationViewModel.CurrencyViewModel()
                     {
-                        code = model.BankCurrencyCode,
-                        _id = model.BankCurrencyId,
+                        Code = model.BankCurrencyCode,
+                        Id = model.BankCurrencyId,
                     }
                 },
                 Date = model.Date,
@@ -591,7 +612,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
                 ReferenceType = "Bayar Hutang",
                 SourceType = "Operasional",
                 Status = "OUT",
-                Supplier = new SupplierViewModel()
+                Supplier = new ViewModels.NewIntegrationViewModel.NewSupplierViewModel()
                 {
                     _id = model.SupplierId,
                     code = model.SupplierCode,
@@ -674,7 +695,15 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.BankExpenditureNoteFacades
 
         public List<ExpenditureInfo> GetByPeriod(int month, int year, int timeoffset)
         {
-            return dbSet.Where(w => w.Date.AddHours(timeoffset).Month.Equals(month) && w.Date.AddHours(timeoffset).Year.Equals(year)).Select(s => new ExpenditureInfo() { DocumentNo = s.DocumentNo, BankName = s.BankName, BGCheckNumber = s.BGCheckNumber }).ToList();
+            if (month == 0 && year == 0)
+            {
+                return dbSet.Select(s => new ExpenditureInfo() { DocumentNo = s.DocumentNo, BankName = s.BankName, BGCheckNumber = s.BGCheckNumber }).ToList();
+            }
+            else
+            {
+                return dbSet.Where(w => w.Date.AddHours(timeoffset).Month.Equals(month) && w.Date.AddHours(timeoffset).Year.Equals(year)).Select(s => new ExpenditureInfo() { DocumentNo = s.DocumentNo, BankName = s.BankName, BGCheckNumber = s.BGCheckNumber }).ToList();
+            }
+
         }
     }
 

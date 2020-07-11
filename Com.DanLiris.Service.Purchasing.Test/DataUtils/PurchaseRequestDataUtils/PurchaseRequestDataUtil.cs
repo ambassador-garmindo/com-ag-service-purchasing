@@ -35,8 +35,32 @@ namespace Com.DanLiris.Service.Purchasing.Test.DataUtils.PurchaseRequestDataUtil
                 DivisionId = "DivisionId",
                 DivisionCode = "DivisionCode",
                 DivisionName = "DivisionName",
-                CategoryId = "CategoryId",
+                CategoryId = "1",
                 CategoryCode = "CategoryCode",
+                CategoryName = "CategoryName",
+                Remark = "Remark",
+                Items = new List<PurchaseRequestItem> { purchaseRequestItemDataUtil.GetNewData() }
+            };
+        }
+
+        public PurchaseRequest GetNewHavingStockData()
+        {
+            return new PurchaseRequest
+            {
+                No = "No1",
+                Date = DateTimeOffset.Now,
+                ExpectedDeliveryDate = DateTimeOffset.Now,
+                BudgetId = "BudgetId",
+                BudgetCode = "BudgetCode",
+                BudgetName = "BudgetName",
+                UnitId = "UnitId",
+                UnitCode = "UnitCode",
+                UnitName = "UnitName",
+                DivisionId = "DivisionId",
+                DivisionCode = "DivisionCode",
+                DivisionName = "DivisionName",
+                CategoryId = "1",
+                CategoryCode = "BB",
                 CategoryName = "CategoryName",
                 Remark = "Remark",
                 Items = new List<PurchaseRequestItem> { purchaseRequestItemDataUtil.GetNewData() }
@@ -70,7 +94,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.DataUtils.PurchaseRequestDataUtil
                 },
                 category = new CategoryViewModel
                 {
-                    _id = "CategoryId",
+                    _id = "1",
                     code = "CategoryCode",
                     name = "CategoryName",
                 },
@@ -91,6 +115,15 @@ namespace Com.DanLiris.Service.Purchasing.Test.DataUtils.PurchaseRequestDataUtil
         public async Task<PurchaseRequest> GetTestDataPosted(string user)
         {
             PurchaseRequest purchaseRequest = GetNewData();
+            purchaseRequest.IsPosted = true;
+            await facade.Create(purchaseRequest, user);
+
+            return purchaseRequest;
+        }
+
+        public async Task<PurchaseRequest> GetTestHavingStockDataPosted(string user)
+        {
+            PurchaseRequest purchaseRequest = GetNewHavingStockData();
             purchaseRequest.IsPosted = true;
             await facade.Create(purchaseRequest, user);
 
