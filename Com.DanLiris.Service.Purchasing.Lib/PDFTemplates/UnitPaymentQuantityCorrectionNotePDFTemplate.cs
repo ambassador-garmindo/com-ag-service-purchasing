@@ -474,7 +474,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
                 Paragraph companyAddress = new Paragraph("Alamat     :  Kelurahan Banaran, Kecamatan Grogol, Sukoharjo 57193 - INDONESIA", smaller_font) { Alignment = Element.ALIGN_LEFT };
                 document.Add(companyAddress);
 
-                Paragraph companyNPWP = new Paragraph("N P W P  :  01.139.907.8 - 532.000", smaller_font) { Alignment = Element.ALIGN_LEFT };
+                Paragraph companyNPWP = new Paragraph("N P W P  :  01.490.833.9 - 532.000", smaller_font) { Alignment = Element.ALIGN_LEFT };
                 document.Add(companyNPWP);
 
                 document.Add(space);
