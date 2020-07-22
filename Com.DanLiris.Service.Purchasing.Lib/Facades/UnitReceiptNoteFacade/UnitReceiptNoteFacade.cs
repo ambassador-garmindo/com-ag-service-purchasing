@@ -289,7 +289,13 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.UnitReceiptNoteFacade
             var httpClient = (IHttpClientService)serviceProvider.GetService(typeof(IHttpClientService));
             var response = await httpClient.PostAsync($"{APIEndpoint.Finance}{creditorAccountUri}", new StringContent(JsonConvert.SerializeObject(creditorAccount).ToString(), Encoding.UTF8, General.JsonMediaType));
 
-            response.EnsureSuccessStatusCode();
+            //response.EnsureSuccessStatusCode();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var resp = await response.Content.ReadAsStringAsync();
+                throw new Exception(resp);
+            }
         }
 
         //private async Task CreateJournalTransactions(UnitReceiptNote model)
@@ -645,7 +651,12 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.UnitReceiptNoteFacade
             var httpClient = (IHttpClientService)serviceProvider.GetService(typeof(IHttpClientService));
             var response = await httpClient.PostAsync($"{APIEndpoint.Finance}{journalTransactionUri}", new StringContent(JsonConvert.SerializeObject(journalTransactionToPost).ToString(), Encoding.UTF8, General.JsonMediaType));
 
-            response.EnsureSuccessStatusCode();
+            //response.EnsureSuccessStatusCode();
+
+            if (!response.IsSuccessStatusCode) {
+               var resp = await response.Content.ReadAsStringAsync();
+                throw new Exception(resp);
+            }
         }
 
         //private JournalTransaction CreateIsSparePartJournalTransaction(UnitReceiptNoteItem item, UnitReceiptNote model, bool useIncomeTax, double incomeTaxRate, string incomeTaxName, bool isMoreThanOneHundredMillion)
