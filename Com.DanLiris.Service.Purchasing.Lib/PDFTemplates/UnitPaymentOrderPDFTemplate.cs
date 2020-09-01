@@ -34,12 +34,12 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
             PdfPCell cellJustifyNoBorder = new PdfPCell() { Border = Rectangle.NO_BORDER, HorizontalAlignment = Element.ALIGN_JUSTIFIED };
             PdfPCell cellJustifyAllNoBorder = new PdfPCell() { Border = Rectangle.NO_BORDER, HorizontalAlignment = Element.ALIGN_JUSTIFIED_ALL };
 
-            PdfPCell cellCenter = new PdfPCell() { Border = Rectangle.TOP_BORDER | Rectangle.LEFT_BORDER | Rectangle.BOTTOM_BORDER | Rectangle.RIGHT_BORDER, HorizontalAlignment = Element.ALIGN_CENTER, VerticalAlignment = Element.ALIGN_MIDDLE, Padding = 5 };
-            PdfPCell cellRight = new PdfPCell() { Border = Rectangle.TOP_BORDER | Rectangle.LEFT_BORDER | Rectangle.BOTTOM_BORDER | Rectangle.RIGHT_BORDER, HorizontalAlignment = Element.ALIGN_RIGHT, VerticalAlignment = Element.ALIGN_MIDDLE, Padding = 5 };
-            PdfPCell cellLeft = new PdfPCell() { Border = Rectangle.TOP_BORDER | Rectangle.LEFT_BORDER | Rectangle.BOTTOM_BORDER | Rectangle.RIGHT_BORDER, HorizontalAlignment = Element.ALIGN_LEFT, VerticalAlignment = Element.ALIGN_MIDDLE, Padding = 5 };
+            PdfPCell cellCenter = new PdfPCell() { Border = Rectangle.TOP_BORDER | Rectangle.LEFT_BORDER | Rectangle.BOTTOM_BORDER | Rectangle.RIGHT_BORDER, HorizontalAlignment = Element.ALIGN_CENTER, VerticalAlignment = Element.ALIGN_MIDDLE, Padding = 2 };
+            PdfPCell cellRight = new PdfPCell() { Border = Rectangle.TOP_BORDER | Rectangle.LEFT_BORDER | Rectangle.BOTTOM_BORDER | Rectangle.RIGHT_BORDER, HorizontalAlignment = Element.ALIGN_RIGHT, VerticalAlignment = Element.ALIGN_MIDDLE, Padding = 2 };
+            PdfPCell cellLeft = new PdfPCell() { Border = Rectangle.TOP_BORDER | Rectangle.LEFT_BORDER | Rectangle.BOTTOM_BORDER | Rectangle.RIGHT_BORDER, HorizontalAlignment = Element.ALIGN_LEFT, VerticalAlignment = Element.ALIGN_MIDDLE, Padding = 2 };
 
-            PdfPCell cellRightMerge = new PdfPCell() { Border = Rectangle.NO_BORDER | Rectangle.NO_BORDER | Rectangle.BOTTOM_BORDER | Rectangle.RIGHT_BORDER, HorizontalAlignment = Element.ALIGN_RIGHT, VerticalAlignment = Element.ALIGN_TOP, Padding = 5 };
-            PdfPCell cellLeftMerge = new PdfPCell() { Border = Rectangle.NO_BORDER | Rectangle.LEFT_BORDER | Rectangle.BOTTOM_BORDER | Rectangle.NO_BORDER, HorizontalAlignment = Element.ALIGN_LEFT, VerticalAlignment = Element.ALIGN_TOP, Padding = 5 };
+            PdfPCell cellRightMerge = new PdfPCell() { Border = Rectangle.NO_BORDER | Rectangle.NO_BORDER | Rectangle.BOTTOM_BORDER | Rectangle.RIGHT_BORDER, HorizontalAlignment = Element.ALIGN_LEFT, VerticalAlignment = Element.ALIGN_TOP, Padding = 2 };
+            PdfPCell cellLeftMerge = new PdfPCell() { Border = Rectangle.NO_BORDER | Rectangle.LEFT_BORDER | Rectangle.BOTTOM_BORDER | Rectangle.NO_BORDER, HorizontalAlignment = Element.ALIGN_LEFT, VerticalAlignment = Element.ALIGN_TOP, Padding = 2 };
 
             #region Header
 
@@ -65,7 +65,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
 
             PdfPCell cellHeader = new PdfPCell(tableHeader);
             tableHeader.ExtendLastRow = false;
-            tableHeader.SpacingAfter = 15f;
+            tableHeader.SpacingAfter = 5f;
             document.Add(tableHeader);
 
             #endregion
@@ -90,7 +90,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
 
             PdfPCell cellIdentity = new PdfPCell(tableIdentity);
             tableIdentity.ExtendLastRow = false;
-            tableIdentity.SpacingAfter = 15f;
+            tableIdentity.SpacingAfter = 5f;
             document.Add(tableIdentity);
 
             #endregion
@@ -98,7 +98,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
             #region TableContent
 
             PdfPTable tableContent = new PdfPTable(10);
-            tableContent.SetWidths(new float[] { 1.3f, 5f, 3f, 1.5f, 3.5f, 1.5f, 3.5f, 4f, 4f, 3f });
+            tableContent.SetWidths(new float[] { 1f, 5f, 2.5f, 1f, 3.5f, 1f, 3.5f, 4f, 4f, 3f });
 
             cellCenter.Phrase = new Phrase("No.", bold_font);
             tableContent.AddCell(cellCenter);
@@ -175,7 +175,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
 
             PdfPCell cellContent = new PdfPCell(tableContent);
             tableContent.ExtendLastRow = false;
-            tableContent.SpacingAfter = 10f;
+            tableContent.SpacingAfter = 5f;
             document.Add(tableContent);
 
             #endregion
@@ -264,12 +264,12 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
 
             PdfPCell taxCell = new PdfPCell(tableTax);
             tableTax.ExtendLastRow = false;
-            tableTax.SpacingAfter = 15f;
+            tableTax.SpacingAfter = 5f;
             document.Add(tableTax);
 
             #endregion
 
-            Paragraph paragraphTerbilang = new Paragraph($"Terbilang : {NumberToTextIDN.terbilang(!withoutIncomeTax ? totalWithPph : total)} {model.CurrencyDescription.ToLower()}", bold_font) { SpacingAfter = 15f };
+            Paragraph paragraphTerbilang = new Paragraph($"Terbilang : {NumberToTextIDN.terbilang(!withoutIncomeTax ? totalWithPph : total)} {model.CurrencyDescription.ToLower()}", bold_font) { SpacingAfter = 5f };
             document.Add(paragraphTerbilang);
 
             #region Footer
@@ -355,7 +355,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
 
             PdfPCell taxFooter = new PdfPCell(tableFooter);
             tableFooter.ExtendLastRow = false;
-            tableFooter.SpacingAfter = 30f;
+            tableFooter.SpacingAfter = 10f;
             document.Add(tableFooter);
 
             #endregion
