@@ -17,6 +17,7 @@ using Com.Moonlay.NetCore.Lib.Service;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 namespace Com.DanLiris.Service.Purchasing.WebApi.Controllers.v1.GarmentInvoiceControllers
 {
@@ -134,8 +135,8 @@ namespace Com.DanLiris.Service.Purchasing.WebApi.Controllers.v1.GarmentInvoiceCo
 				else
 				{
 					int clientTimeZoneOffset = int.Parse(Request.Headers["x-timezone-offset"].First());
-					
-					IncomeTaxPDFTemplate PdfTemplateLocal = new IncomeTaxPDFTemplate();
+
+                    IncomeTaxPDFTemplate PdfTemplateLocal = new IncomeTaxPDFTemplate();
 					MemoryStream stream = PdfTemplateLocal.GeneratePdfTemplate(viewModel, clientTimeZoneOffset,DOfacade);
 
 					return new FileStreamResult(stream, "application/pdf")
@@ -225,7 +226,7 @@ namespace Com.DanLiris.Service.Purchasing.WebApi.Controllers.v1.GarmentInvoiceCo
 				{
 					int clientTimeZoneOffset = int.Parse(Request.Headers["x-timezone-offset"].First());
 
-					VatPDFTemplate PdfTemplateLocal = new VatPDFTemplate();
+                    VatPDFTemplate PdfTemplateLocal = new VatPDFTemplate();
 					MemoryStream stream = PdfTemplateLocal.GeneratePdfTemplate(viewModel, clientTimeZoneOffset,DOfacade);
 
 					return new FileStreamResult(stream, "application/pdf")

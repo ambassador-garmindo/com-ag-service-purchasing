@@ -29,6 +29,7 @@ using Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitDeliveryOrderModel;
 using Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitDeliveryOrderFacades;
 using Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitExpenditureNoteModel;
 using Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitExpenditureNoteFacade;
+using OfficeOpenXml;
 
 namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFacades
 {
@@ -50,6 +51,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
         private readonly DbSet<GarmentDeliveryOrder> dbsetGarmentDeliveryOrder;
         private readonly DbSet<GarmentUnitDeliveryOrder> dbSetGarmentUnitDeliveryOrder;
         private readonly DbSet<GarmentUnitExpenditureNote> dbSetGarmentUnitExpenditureNote;
+        private readonly DbSet<GarmentDOItems> dbSetGarmentDOItems;
 
         private readonly IMapper mapper;
 
@@ -69,6 +71,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
             dbsetGarmentDeliveryOrder = dbContext.Set<GarmentDeliveryOrder>();
             dbSetGarmentUnitDeliveryOrder= dbContext.Set<GarmentUnitDeliveryOrder>();
             dbSetGarmentUnitExpenditureNote= dbContext.Set<GarmentUnitExpenditureNote>();
+            dbSetGarmentDOItems = dbContext.Set<GarmentDOItems>();
 
             mapper = (IMapper)serviceProvider.GetService(typeof(IMapper));
         }
@@ -185,6 +188,14 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
             return viewModel;
         }
 
+        public GarmentDOItems ReadDOItemsByURNItemId(int id)
+        {
+            var model = dbSetGarmentDOItems.Where(m => m.URNItemId == id)
+                            .FirstOrDefault();
+
+            return model;
+        }
+
         public MemoryStream GeneratePdf(GarmentUnitReceiptNoteViewModel garmentUnitReceiptNote)
         {
             return GarmentUnitReceiptNotePDFTemplate.GeneratePdfTemplate(serviceProvider, garmentUnitReceiptNote);
@@ -217,9 +228,12 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
 
                     foreach (var garmentUnitReceiptNoteItem in garmentUnitReceiptNote.Items)
                     {
-                        
-                        garmentUnitReceiptNoteItem.DOCurrencyRate = garmentUnitReceiptNote.DOCurrencyRate!=null && garmentUnitReceiptNote.URNType == "PEMBELIAN" ? (double)garmentUnitReceiptNote.DOCurrencyRate : garmentUnitReceiptNoteItem.DOCurrencyRate;
-
+                        garmentUnitReceiptNoteItem.DOCurrencyRate = garmentUnitReceiptNote.DOCurrencyRate!=null && garmentUnitReceiptNote.URNType == "PEMBELIAN" ? 
+                        (double)garmentUnitReceiptNote.DOCurrencyRate : garmentUnitReceiptNoteItem.DOCurrencyRate;
+                        if (garmentUnitReceiptNoteItem.DOCurrencyRate == 0)
+                        {
+                            throw new Exception("DOCurrencyRate tidak boleh 0");
+                        }
                         garmentUnitReceiptNoteItem.CorrectionConversion = garmentUnitReceiptNoteItem.Conversion;
                         EntityExtension.FlagForCreate(garmentUnitReceiptNoteItem, identityService.Username, USER_AGENT);
                         garmentUnitReceiptNoteItem.ReceiptCorrection = garmentUnitReceiptNoteItem.ReceiptQuantity;
@@ -260,6 +274,45 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
 
                     dbSet.Add(garmentUnitReceiptNote);
                     Created = await dbContext.SaveChangesAsync();
+
+
+                    if (garmentUnitReceiptNote.URNType == "PEMBELIAN" || garmentUnitReceiptNote.URNType == "PROSES")
+                    {
+                        foreach (var garmentUnitReceiptNoteItem in garmentUnitReceiptNote.Items)
+                        {
+                            GarmentDOItems garmentDOItems = new GarmentDOItems
+                            {
+                                DOItemNo= await GenerateNoDOItems(garmentUnitReceiptNote),
+                                UnitId= garmentUnitReceiptNote.UnitId,
+                                UnitCode= garmentUnitReceiptNote.UnitCode,
+                                UnitName= garmentUnitReceiptNote.UnitName,
+                                StorageCode= garmentUnitReceiptNote.StorageCode,
+                                StorageId= garmentUnitReceiptNote.StorageId,
+                                StorageName= garmentUnitReceiptNote.StorageName,
+                                POId= garmentUnitReceiptNoteItem.POId,
+                                POItemId= garmentUnitReceiptNoteItem.POItemId,
+                                POSerialNumber= garmentUnitReceiptNoteItem.POSerialNumber,
+                                ProductCode= garmentUnitReceiptNoteItem.ProductCode,
+                                ProductId= garmentUnitReceiptNoteItem.ProductId,
+                                ProductName= garmentUnitReceiptNoteItem.ProductName,
+                                DesignColor= garmentUnitReceiptNoteItem.DesignColor,
+                                SmallQuantity= garmentUnitReceiptNoteItem.SmallQuantity,
+                                SmallUomId= garmentUnitReceiptNoteItem.SmallUomId,
+                                SmallUomUnit= garmentUnitReceiptNoteItem.SmallUomUnit,
+                                RemainingQuantity= garmentUnitReceiptNoteItem.SmallQuantity,
+                                DetailReferenceId= garmentUnitReceiptNoteItem.DODetailId,
+                                URNItemId= garmentUnitReceiptNoteItem.Id,
+                                DOCurrencyRate= garmentUnitReceiptNoteItem.DOCurrencyRate,
+                                EPOItemId= garmentUnitReceiptNoteItem.EPOItemId,
+                                PRItemId= garmentUnitReceiptNoteItem.PRItemId,
+                                RO= garmentUnitReceiptNoteItem.RONo,
+                                
+                            };
+                            EntityExtension.FlagForCreate(garmentDOItems, identityService.Username, USER_AGENT);
+                            dbSetGarmentDOItems.Add(garmentDOItems);
+                            await dbContext.SaveChangesAsync();
+                        }
+                    }
 
                     if (garmentUnitReceiptNote.URNType == "PROSES")
                     {
@@ -453,7 +506,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
                                     ReceiptCorrection= (decimal)uenItem.Quantity / uenItem.Conversion,
                                     CorrectionConversion= uenItem.Conversion,
                                     OrderQuantity=0,
-                                    DOCurrencyRate= uenItem.DOCurrencyRate!=null ? (double)uenItem.DOCurrencyRate:0
+                                    DOCurrencyRate= uenItem.DOCurrencyRate!=null ? (double)uenItem.DOCurrencyRate:0,
+                                    UENItemId=uenItem.Id
                                 };
                                 urnItems.Add(garmentURNItem);
                                 EntityExtension.FlagForCreate(garmentURNItem, identityService.Username, USER_AGENT);
@@ -634,6 +688,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
                     oldGarmentUnitReceiptNote.Remark = garmentUnitReceiptNote.Remark;
 
                     var garmentDeliveryOrder = dbsetGarmentDeliveryOrder.First(d => d.Id == garmentUnitReceiptNote.DOId);
+                    
                     garmentUnitReceiptNote.DOCurrencyRate = garmentDeliveryOrder.DOCurrencyRate;
 
                     Updated = await dbContext.SaveChangesAsync();
@@ -704,6 +759,16 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
                                 EntityExtension.FlagForUpdate(garmentInventorySummaryExisting, identityService.Username, USER_AGENT);
                                 garmentInventorySummaryExisting.Quantity = garmentInventoryMovement.After;
                             }
+                        }
+                    }
+
+                    if(garmentUnitReceiptNote.URNType == "PEMBELIAN" || garmentUnitReceiptNote.URNType == "PROSES")
+                    {
+                        foreach (var garmentUnitReceiptNoteItem in garmentUnitReceiptNote.Items)
+                        {
+                            GarmentDOItems garmentDOItems = dbSetGarmentDOItems.FirstOrDefault(a => a.URNItemId == garmentUnitReceiptNoteItem.Id);
+                            if(garmentDOItems!=null)
+                                EntityExtension.FlagForDelete(garmentDOItems, identityService.Username, USER_AGENT);
                         }
                     }
 
@@ -966,6 +1031,28 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
             }
         }
 
+        public async Task<string> GenerateNoDOItems(GarmentUnitReceiptNote garmentUnitReceiptNote)
+        {
+            string Year = garmentUnitReceiptNote.ReceiptDate.ToOffset(new TimeSpan(identityService.TimezoneOffset, 0, 0)).ToString("yy");
+            string Month = garmentUnitReceiptNote.ReceiptDate.ToOffset(new TimeSpan(identityService.TimezoneOffset, 0, 0)).ToString("MM");
+            string Day = garmentUnitReceiptNote.ReceiptDate.ToOffset(new TimeSpan(identityService.TimezoneOffset, 0, 0)).ToString("dd");
+
+            string no = string.Concat("DOI", garmentUnitReceiptNote.UnitCode, Year, Month);
+            int Padding = 5;
+
+            var lastNo = await dbSetGarmentDOItems.Where(w => w.DOItemNo.StartsWith(no) && !w.IsDeleted).OrderByDescending(o => o.DOItemNo).FirstOrDefaultAsync();
+
+            if (lastNo == null)
+            {
+                return no + "1".PadLeft(Padding, '0');
+            }
+            else
+            {
+                int lastNoNumber = Int32.Parse(lastNo.DOItemNo.Replace(no, string.Empty)) + 1;
+                return no + lastNoNumber.ToString().PadLeft(Padding, '0');
+            }
+        }
+
         public List<object> ReadForUnitDO(string Keyword = null, string Filter = "{}")
         {
             IQueryable<GarmentUnitReceiptNote> Query = dbSet;
@@ -984,7 +1071,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
                     x.Items.Any(i => i.RONo.Contains((Keyword ?? "").Trim()) && (isPROSES && (i.RONo.EndsWith("S") || i.RONo.EndsWith("M")) ? false : true))
                 )
                 .SelectMany(x => x.Items
-                .Where(i => i.RONo.Contains((Keyword ?? "").Trim()) && (isPROSES && (i.RONo.EndsWith("S") || i.RONo.EndsWith("M")) ? false : true))
+                .Where(i => (( i.ReceiptCorrection * i.CorrectionConversion )- i.OrderQuantity >0 ) &&  i.RONo.Contains((Keyword ?? "").Trim()) && (isPROSES && (i.RONo.EndsWith("S") || i.RONo.EndsWith("M")) ? false : true))
                 .Select(y => new
                 {
                     x.URNNo,
@@ -1039,7 +1126,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
                     (!hasUnitFilter ? true : x.UnitId == unitId) &&
                     (!hasStorageFilter ? true : x.StorageId == storageId) &&
                     x.IsDeleted == false &&
-                    x.Items.Any(i => i.RONo.Contains((Keyword ?? "").Trim()) && (hasRONoFilter ? (i.RONo != RONo) : true))
+                    x.Items.Any(i => i.RONo.Contains((Keyword ?? "").Trim()) && ((i.ReceiptCorrection * i.CorrectionConversion) - i.OrderQuantity > 0) && (hasRONoFilter ? (i.RONo != RONo) : true))
                 )
                 .SelectMany(x => x.Items.Select(y => new
                 {
@@ -1065,7 +1152,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
                     y.ReceiptCorrection,
                     y.Conversion,
                     y.CorrectionConversion,
-                    Article = dbContext.GarmentExternalPurchaseOrderItems.Where(m => m.Id == y.EPOItemId).Select(d => d.Article).FirstOrDefault()
+                    Article = dbContext.GarmentExternalPurchaseOrderItems.Where( m => m.Id == y.EPOItemId ).Select(d => d.Article).FirstOrDefault()
                 })).ToList();
             List<object> result = new List<object>(readForUnitDO);
             return result;
@@ -1324,7 +1411,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
         }
 
 
-        public MemoryStream GenerateExcelLow(DateTime? dateFrom, DateTime? dateTo, string unit, string category, int offset)
+        public MemoryStream GenerateExcelLow(DateTime? dateFrom, DateTime? dateTo, string unit, string category, string categoryname, int offset, string unitname)
         {
             var Query = GetReportQueryFlow(dateFrom, dateTo, unit, category, offset);
 
@@ -1365,8 +1452,38 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
                 }
 
             }
+            ExcelPackage package = new ExcelPackage();
+            DateTime DateFrom = dateFrom == null ? new DateTime(1970, 1, 1) : (DateTime)dateFrom;
+            DateTime DateTo = dateTo == null ? DateTime.Now : (DateTime)dateTo;
+            CultureInfo Id = new CultureInfo("id-ID");
+            string Month = Id.DateTimeFormat.GetMonthName(DateTo.Month);
+            var sheet = package.Workbook.Worksheets.Add("Report");
 
-            return Excel.CreateExcel(new List<(DataTable, string, List<(string, Enum, Enum)>)>() { (result, "Report", mergeCells) }, true);
+            var col = (char)('A' + result.Columns.Count);
+            string tglawal = DateFrom.ToString("dd MMM yyyy", new CultureInfo("id-ID"));
+            string tglakhir = DateTo.ToString("dd MMM yyyy", new CultureInfo("id-ID"));
+            sheet.Cells[$"A1:{col}1"].Value = string.Format("LAPORAN REKAP PENERIMAAN {0}", categoryname);
+            sheet.Cells[$"A1:{col}1"].Merge = true;
+            sheet.Cells[$"A1:{col}1"].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+            sheet.Cells[$"A1:{col}1"].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+            sheet.Cells[$"A1:{col}1"].Style.Font.Bold = true;
+            sheet.Cells[$"A2:{col}2"].Value = string.Format("Periode {0} - {1}", tglawal, tglakhir);
+            sheet.Cells[$"A2:{col}2"].Merge = true;
+            sheet.Cells[$"A2:{col}2"].Style.Font.Bold = true;
+            sheet.Cells[$"A2:{col}2"].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+            sheet.Cells[$"A2:{col}2"].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+            sheet.Cells[$"A3:{col}3"].Value = string.Format("KONFEKSI : {0}", (string.IsNullOrWhiteSpace(unitname) ? "ALL" : unitname));
+            sheet.Cells[$"A3:{col}3"].Merge = true;
+            sheet.Cells[$"A3:{col}3"].Style.Font.Bold = true;
+            sheet.Cells[$"A3:{col}3"].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+            sheet.Cells[$"A3:{col}3"].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+
+            sheet.Cells["A5"].LoadFromDataTable(result, true, OfficeOpenXml.Table.TableStyles.Light16);
+
+            MemoryStream stream = new MemoryStream();
+            package.SaveAs(stream);
+            return stream;
+            //return Excel.CreateExcel(new List<(DataTable, string, List<(string, Enum, Enum)>)>() { (result, "Report", mergeCells) }, true);
         }
 
         #endregion
@@ -1399,8 +1516,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
                                            join b in dbContext.GarmentUnitReceiptNoteItems on a.Id equals b.URNId
                                            where a.IsDeleted == false && b.IsDeleted == false
                                            && a.StorageName == "GUDANG BAHAN BAKU"
-                                           && a.ReceiptDate.Date >= DateFrom.Date
-                                           && a.ReceiptDate.Date <= DateTo.Date
+                                           && a.CreatedUtc.Date >= DateFrom.Date
+                                           && a.CreatedUtc.Date <= DateTo.Date
                                            select new GarmentUnitReceiptNoteINReportViewModel
                                            {
                                                NoSuratJalan = a.DONo,
@@ -1424,8 +1541,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
                                                  join b in dbContext.GarmentUnitReceiptNoteItems on a.Id equals b.URNId
                                                  where a.IsDeleted == false && b.IsDeleted == false
                                                  && a.StorageName != "GUDANG BAHAN BAKU"
-                                                 && a.ReceiptDate.Date >= DateFrom.Date
-                                                 && a.ReceiptDate.Date <= DateTo.Date
+                                                 && a.CreatedUtc.Date >= DateFrom.Date
+                                                 && a.CreatedUtc.Date <= DateTo.Date
                                                  select new GarmentUnitReceiptNoteINReportViewModel
                                                  {
                                                      NoSuratJalan = a.DONo,
@@ -1449,8 +1566,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitReceiptNoteFaca
                                                    join b in dbContext.GarmentUnitReceiptNoteItems on a.Id equals b.URNId
                                                    where a.IsDeleted == false && b.IsDeleted == false
                                                    && a.StorageName == a.StorageName
-                                                   && a.ReceiptDate.Date >= DateFrom.Date
-                                                   && a.ReceiptDate.Date <= DateTo.Date
+                                                   && a.CreatedUtc.Date >= DateFrom.Date
+                                                   && a.CreatedUtc.Date <= DateTo.Date
                                                    select new GarmentUnitReceiptNoteINReportViewModel
                                                    {
                                                        NoSuratJalan = a.DONo,
