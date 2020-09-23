@@ -50,6 +50,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.GarmentUnitExpenditur
                             UENId = It.IsAny<int>(),
                             URNItemId = It.IsAny<int>(),
                             DODetailId = It.IsAny<int>(),
+                            EPOItemId = It.IsAny<int>(),
                             UnitDOItemId = It.IsAny<int>(),
                             POItemId = It.IsAny<int>(),
                             PRItemId = It.IsAny<int>(),
@@ -72,6 +73,7 @@ namespace Com.DanLiris.Service.Purchasing.Test.Controllers.GarmentUnitExpenditur
                             },
                             BasicPrice = 1,
                             ReturQuantity = 1,
+                            ItemStatus = "REJECT"
                         }
                     }
                 };

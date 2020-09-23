@@ -1149,7 +1149,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentPurchaseRequestFaca
 
             return Tuple.Create(Query, TotalCountReport);
         }
-        public MemoryStream GenerateExcelPurchase(string epono, string unit, string roNo, string article, string poSerialNumber, string username, string doNo, string ipoStatus, string supplier, string status, DateTime? dateFrom, DateTime? dateTo, DateTime? dateFromEx, DateTime? dateToEx, int page, int size, string Order, int offset)
+        public MemoryStream GenerateExcelPurchase(string epono, string unit, string roNo, string article, string poSerialNumber, string username, string doNo, string ipoStatus, string supplier, string status, DateTime? dateFrom, DateTime? dateTo, DateTimeOffset? dateFromEx, DateTimeOffset? dateToEx, int page, int size, string Order, int offset)
         {
             var Query = GetMonitoringPurchaseByUserReportQuery(epono, unit, roNo, article, poSerialNumber, username, doNo, ipoStatus, supplier, status, dateFrom, dateTo, dateFromEx, dateToEx, offset, 1, int.MaxValue);
             DataTable result = new DataTable();
@@ -1228,7 +1228,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentPurchaseRequestFaca
 
 
             if (Query.ToArray().Count() == 0)
-                result.Rows.Add("", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", 0, "", "", "", "", "", "", "", 0, 0, "", 0, 0, 0, "", "", 0, "", "", "", "", 0, "", "", "", "", "", 0, "", "", "", "", 0, "", "", "", "", "", "", "", "", 0, "", "", "", "", "", ""); // to allow column name to be generated properly for empty data as template
+                result.Rows.Add("", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", 0, "", "", "", "", "", "", "", "", 0, 0, "", 0, 0, 0, "", "", 0, "", "", "", "", 0, "", "", "", "", "", "", "", 0, "", "", "", "", "", "", "", "", "", "", "", "", "", 0, "", "", "", "", "", ""); // to allow column name to be generated properly for empty data as template
             else
             {
                 int index = 0;
@@ -1250,14 +1250,14 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentPurchaseRequestFaca
         #endregion
         #region monitoring purchase
         public int TotalCountReport { get; set; } = 0;
-        private List<MonitoringPurchaseAllUserViewModel> GetMonitoringPurchaseByUserReportQuery(string epono, string unit, string roNo, string article, string poSerialNumber, string username, string doNo, string ipoStatus, string supplier, string status, DateTime? dateFrom, DateTime? dateTo, DateTime? dateFromEx, DateTime? dateToEx, int offset, int page, int size)
+        private List<MonitoringPurchaseAllUserViewModel> GetMonitoringPurchaseByUserReportQuery(string epono, string unit, string roNo, string article, string poSerialNumber, string username, string doNo, string ipoStatus, string supplier, string status, DateTime? dateFrom, DateTime? dateTo, DateTimeOffset? dateFromEx, DateTimeOffset? dateToEx, int offset, int page, int size)
         {
 
 
             DateTime d1 = dateFrom == null ? new DateTime(1970, 1, 1) : (DateTime)dateFrom;
             DateTime d2 = dateTo == null ? DateTime.Now : (DateTime)dateTo;
-            DateTime d3 = dateFromEx == null ? new DateTime(1970, 1, 1) : (DateTime)dateFromEx;
-            DateTime d4 = dateToEx == null ? DateTime.Now : (DateTime)dateToEx;
+            DateTimeOffset d3 = dateFromEx == null ? new DateTime(1970, 1, 1) : (DateTimeOffset)dateFromEx;
+            DateTimeOffset d4 = dateToEx == null ? DateTimeOffset.Now : (DateTimeOffset)dateToEx;
             offset = 7;
 
             List<MonitoringPurchaseAllUserViewModel> listEPO = new List<MonitoringPurchaseAllUserViewModel>();
@@ -1326,26 +1326,29 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentPurchaseRequestFaca
                          where
                          ipoitem.IsDeleted == false && ipo.IsDeleted == false && epo.IsDeleted == false && epos.IsDeleted == false && intern.IsDeleted == false && internnote.IsDeleted == false && internotedetail.IsDeleted == false
                          && inv.IsDeleted == false && invoiceitem.IsDeleted == false && receipt.IsDeleted == false && unititem.IsDeleted == false && bc.IsDeleted == false
-                          && a.IsDeleted == false && b.IsDeleted == false && ipo.IsDeleted == false && ipoitem.IsDeleted == false
+                         && a.IsDeleted == false && b.IsDeleted == false && ipo.IsDeleted == false && ipoitem.IsDeleted == false
 
 
                          && (unit == null || (unit != null && unit != "" && a.UnitId == unit))
                          && (article == null || (article != null && article != "" && a.Article == article))
                          && (roNo == null || (roNo != null && roNo != "" && a.RONo == roNo))
-                          && ((d1 != new DateTime(1970, 1, 1)) ? (a.Date.Date >= d1 && a.Date.Date <= d2) : true)
+                         && (a.Date.Date >= d1 && a.Date.Date <= d2)
+                         //&& (epos.OrderDate >= d3 && epos.OrderDate <= d4)
+                         //&& ((d1 != new DateTime(1970, 1, 1)) ? (a.Date.Date >= d1 && a.Date.Date <= d2) : true)
 
-                          && ((d3 != new DateTime(1970, 1, 1)) ? (epos.OrderDate.Date >= d3 && epos.OrderDate.Date <= d4) : true)
+                         && ((d3 != new DateTime(1970, 1, 1)) ? (epos.OrderDate >= d3 && epos.OrderDate <= d4) : true)
 
-                          && (poSerialNumber == null || (poSerialNumber != null && poSerialNumber != "" && b.PO_SerialNumber == poSerialNumber))
-                          && b.IsUsed == (ipoStatus == "BELUM" ? false : ipoStatus == "SUDAH" ? true : b.IsUsed)
+                         && (poSerialNumber == null || (poSerialNumber != null && poSerialNumber != "" && b.PO_SerialNumber == poSerialNumber))
+                         && b.IsUsed == (ipoStatus == "BELUM" ? false : ipoStatus == "SUDAH" ? true : b.IsUsed)
 
-                          && (username == null || (username != null && username != "" && ipo.CreatedBy == username))
-                          && (status == null || (status != null && status != "" && ipoitem.Status == status))
+                         && (username == null || (username != null && username != "" && ipo.CreatedBy == username))
+                         && (status == null || (status != null && status != "" && ipoitem.Status == status))
 
-                          && (epono == null || (epono != null && epono != "" && epos.EPONo == epono))
-                          && (supplier == null || (supplier != null && supplier != "" && epos.SupplierId.ToString() == supplier))
+                         && (epono == null || (epono != null && epono != "" && epos.EPONo == epono))
+                         && (supplier == null || (supplier != null && supplier != "" && epos.SupplierId.ToString() == supplier))
 
-                          && (doNo == null || (doNo != null && doNo != "" && dos.DONo == doNo))
+                         && (doNo == null || (doNo != null && doNo != "" && dos.DONo == doNo))
+                         && (receipt != null ? receipt.URNType == "PEMBELIAN" : true)
 
                          //orderby a.Date descending
 
@@ -1621,7 +1624,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentPurchaseRequestFaca
             return Tuple.Create(Data, TotalCountReport);
         }
 
-        public MemoryStream GenerateExcelByUserPurchase(string epono, string unit, string roNo, string article, string poSerialNumber, string username, string doNo, string ipoStatus, string supplier, string status, DateTime? dateFrom, DateTime? dateTo, DateTime? dateFromEx, DateTime? dateToEx, int page, int size, string Order, int offset)
+        public MemoryStream GenerateExcelByUserPurchase(string epono, string unit, string roNo, string article, string poSerialNumber, string username, string doNo, string ipoStatus, string supplier, string status, DateTime? dateFrom, DateTime? dateTo, DateTimeOffset? dateFromEx, DateTimeOffset? dateToEx, int page, int size, string Order, int offset)
         {
             var Query = GetMonitoringPurchaseByUserReportQuery(epono, unit, roNo, article, poSerialNumber, username, doNo, ipoStatus, supplier, status, dateFrom, dateTo, dateFromEx, dateToEx, offset, 1, int.MaxValue);
             //Query = Query.OrderBy(b => b.PrDate);

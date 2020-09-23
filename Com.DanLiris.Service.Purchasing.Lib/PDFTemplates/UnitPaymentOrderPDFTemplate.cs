@@ -16,6 +16,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
 {
     public class UnitPaymentOrderPDFTemplate
     {
+        /* tambahan */
         public MemoryStream Generate(UnitPaymentOrder model, IUnitPaymentOrderFacade facade, int clientTimeZoneOffset = 7, string userName = null)
         {
             Font header_font = FontFactory.GetFont(BaseFont.HELVETICA_BOLD, BaseFont.CP1250, BaseFont.NOT_EMBEDDED, 12);
@@ -61,7 +62,6 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
             cellHeaderContentRight.AddElement(new Phrase($"SUKOHARJO, {model.Date.ToOffset(new TimeSpan(clientTimeZoneOffset, 0, 0)).ToString("dd MMMM yyyy", new CultureInfo("id-ID"))}", normal_font));
             cellHeaderContentRight.AddElement(new Phrase($"( {model.SupplierCode} ) {model.SupplierName}", normal_font));
             cellHeaderContentRight.AddElement(new Phrase(model.SupplierAddress, normal_font));
-            tableHeader.AddCell(cellHeaderContentRight);
 
             PdfPCell cellHeader = new PdfPCell(tableHeader);
             tableHeader.ExtendLastRow = false;

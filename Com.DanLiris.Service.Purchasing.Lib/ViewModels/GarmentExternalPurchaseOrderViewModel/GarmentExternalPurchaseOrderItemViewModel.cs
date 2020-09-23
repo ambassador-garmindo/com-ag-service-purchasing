@@ -36,5 +36,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentExternalPurchase
         public bool IsOverBudget { get; set; }
 
         public long? UENItemId { get; set; }
+
+        public double BudgetRate { get; set; }
     }
 }
