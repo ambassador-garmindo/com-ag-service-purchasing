@@ -75,32 +75,30 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentBeacukaiViewMode
 			{
 				yield return new ValidationResult("Packaging is required", new List<string> { "packaging" });
 			}
-			int itemErrorCount = 0;
 
 			if (this.items == null || this.items.Count == 0)
 			{
 				yield return new ValidationResult("DeliveryOrder is required", new List<string> { "itemscount" });
 			}
-			else
-			{
-				string itemError = "[";
-				foreach (var item in items)
-				{
-					itemError += "{";
-
-					//if (item.deliveryOrder == null)
-					//{
-					//	itemErrorCount++;
-					//	itemError += "deliveryOrder: 'No deliveryOrder selected', ";
-					//}
-					//itemError += "}, ";
-				}
-
-				itemError += "]";
-
-				if (itemErrorCount > 0)
-					yield return new ValidationResult(itemError, new List<string> { "items" });
-			}
-		}
+            //else
+            //{
+            //    int itemErrorCount = 0;
+            //    string itemError = "[";
+            //    foreach (var item in items)
+            //    {
+            //        itemError += "{";
+            //        //if (item.deliveryOrder == null)
+            //        //{
+            //        //itemErrorCount++;
+            //        //	itemError += "deliveryOrder: 'No deliveryOrder selected', ";
+            //        //}
+            //        //itemError += "}, ";
+            //    }
+            //    itemError += "]";
+            //    if (itemErrorCount > 0)
+            //        yield return new ValidationResult(itemError, new List<string> { "items" });
+            //}
+    
+        }
 	}
 }

@@ -67,11 +67,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
 			tableIncomeTax.AddCell(cellTaxLeft);
 			cellTaxLeft.Phrase = new Phrase("Kode Supplier"  + "      : " + viewModel.supplier.Code, normal_font);
 			tableIncomeTax.AddCell(cellTaxLeft);
-			cellTaxLeft.Phrase = new Phrase("Nama Supplier" + "     :" + viewModel.supplier.Name, normal_font);
+			cellTaxLeft.Phrase = new Phrase("Nama Supplier" + "     : " + viewModel.supplier.Name, normal_font);
 			tableIncomeTax.AddCell(cellTaxLeft);
-	 
 
-			PdfPCell cellSupplier = new PdfPCell(tableIncomeTax); // dont remove
+            PdfPCell cellSupplier = new PdfPCell(tableIncomeTax); // dont remove
 			tableIncomeTax.ExtendLastRow = false;
 			tableIncomeTax.SpacingAfter = 10f;
 			document.Add(tableIncomeTax);
@@ -88,10 +87,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
 			cellCenter.Phrase = new Phrase("Tanggal Surat Jalan", bold_font);
 			tableContent.AddCell(cellCenter);
 			cellCenter.Phrase = new Phrase("No Invoice", bold_font);
-			tableContent.AddCell(cellCenter);
+            tableContent.AddCell(cellCenter);
 			cellCenter.Phrase = new Phrase("Nama Barang", bold_font);
 			tableContent.AddCell(cellCenter);
-			cellCenter.Phrase = new Phrase("Rate PPh", bold_font);
+            cellCenter.Phrase = new Phrase("Rate PPh", bold_font);
 			tableContent.AddCell(cellCenter);
 			cellCenter.Phrase = new Phrase("Sub Total PPh", bold_font);
 			tableContent.AddCell(cellCenter);
@@ -117,10 +116,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
 					cellLeft.Phrase = new Phrase(viewModel.invoiceNo, normal_font);
 					tableContent.AddCell(cellLeft);
 
-					cellLeft.Phrase = new Phrase(detail.product.Name, normal_font);
+                    cellLeft.Phrase = new Phrase(detail.product.Name, normal_font);
 					tableContent.AddCell(cellLeft);
 
-					cellRight.Phrase = new Phrase( viewModel.incomeTaxRate.ToString(), normal_font);
+                    cellRight.Phrase = new Phrase( viewModel.incomeTaxRate.ToString(), normal_font);
 					tableContent.AddCell(cellRight);
 
 					cellRight.Phrase = new Phrase(Math.Round(viewModel.incomeTaxRate * detail.pricePerDealUnit * detail.doQuantity / 100,2).ToString("N2"), normal_font);

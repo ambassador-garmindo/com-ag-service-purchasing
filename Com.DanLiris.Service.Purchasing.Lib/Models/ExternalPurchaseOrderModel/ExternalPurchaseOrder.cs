@@ -33,6 +33,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Models.ExternalPurchaseOrderModel
         public string SupplierCode { get; set; }
         [MaxLength(1000)]
         public string SupplierName { get; set; }
+        public bool SupplierIsImport { get; set; }
 
         public DateTimeOffset OrderDate { get; set; }
         public DateTimeOffset DeliveryDate { get; set; }
@@ -47,6 +48,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Models.ExternalPurchaseOrderModel
         public double CurrencyRate { get; set; }
 
         public string PaymentMethod { get; set; }
+        public string POCashType { get; set; }
         public string PaymentDueDays { get; set; }
         public bool UseIncomeTax { get; set; }
 
@@ -65,6 +67,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Models.ExternalPurchaseOrderModel
         public bool IsClosed { get; set; }
         public bool IsCanceled { get; set; }
         public string Remark { get; set; }
+        public bool IsCreateOnVBRequest { get; set; }
         public virtual ICollection<ExternalPurchaseOrderItem> Items { get; set; }
     }
 }
