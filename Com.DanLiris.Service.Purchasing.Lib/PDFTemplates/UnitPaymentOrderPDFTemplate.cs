@@ -62,6 +62,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
             cellHeaderContentRight.AddElement(new Phrase($"SUKOHARJO, {model.Date.ToOffset(new TimeSpan(clientTimeZoneOffset, 0, 0)).ToString("dd MMMM yyyy", new CultureInfo("id-ID"))}", normal_font));
             cellHeaderContentRight.AddElement(new Phrase($"( {model.SupplierCode} ) {model.SupplierName}", normal_font));
             cellHeaderContentRight.AddElement(new Phrase(model.SupplierAddress, normal_font));
+            tableHeader.AddCell(cellHeaderContentRight);
 
             PdfPCell cellHeader = new PdfPCell(tableHeader);
             tableHeader.ExtendLastRow = false;
