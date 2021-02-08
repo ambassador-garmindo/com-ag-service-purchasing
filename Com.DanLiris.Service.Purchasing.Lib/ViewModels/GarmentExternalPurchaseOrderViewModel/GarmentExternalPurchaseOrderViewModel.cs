@@ -13,6 +13,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentExternalPurchase
         public string EPONo { get; set; }
         public SupplierViewModel Supplier { get; set; }
 
+        public string CustomsCategory { get; set; }
         public DateTimeOffset OrderDate { get; set; }
         public DateTimeOffset DeliveryDate { get; set; }
         public string FreightCostBy { get; set; }

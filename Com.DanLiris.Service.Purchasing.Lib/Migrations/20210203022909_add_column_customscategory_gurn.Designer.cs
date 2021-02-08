@@ -12,9 +12,10 @@ using System;
 namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 {
     [DbContext(typeof(PurchasingDbContext))]
-    partial class PurchasingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20210203022909_add_column_customscategory_gurn")]
+    partial class add_column_customscategory_gurn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4495,7 +4496,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 
                     b.Property<DateTime>("CreatedUtc");
 
-                    b.Property<string>("CustomsCategory");
+                    b.Property<string>("CustomCategory");
 
                     b.Property<double>("DOCurrencyRate");
 

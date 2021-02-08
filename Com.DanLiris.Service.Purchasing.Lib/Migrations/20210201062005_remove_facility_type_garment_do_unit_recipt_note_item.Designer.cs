@@ -12,9 +12,10 @@ using System;
 namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
 {
     [DbContext(typeof(PurchasingDbContext))]
-    partial class PurchasingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20210201062005_remove_facility_type_garment_do_unit_recipt_note_item")]
+    partial class remove_facility_type_garment_do_unit_recipt_note_item
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1870,8 +1871,6 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                     b.Property<int>("CurrencyId");
 
                     b.Property<double>("CurrencyRate");
-
-                    b.Property<string>("CustomsCategory");
 
                     b.Property<string>("DarkPerspiration")
                         .HasMaxLength(1000);
@@ -4494,8 +4493,6 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Migrations
                         .HasMaxLength(255);
 
                     b.Property<DateTime>("CreatedUtc");
-
-                    b.Property<string>("CustomsCategory");
 
                     b.Property<double>("DOCurrencyRate");
 

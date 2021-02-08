@@ -19,6 +19,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentUnitReceiptNoteV
         public long POId { get; set; }
         public long POItemId { get; set; }
         public string POSerialNumber { get; set; }
+        public string CustomsCategory { get; set; }
 
         public GarmentProductViewModel Product { get; set; }
 

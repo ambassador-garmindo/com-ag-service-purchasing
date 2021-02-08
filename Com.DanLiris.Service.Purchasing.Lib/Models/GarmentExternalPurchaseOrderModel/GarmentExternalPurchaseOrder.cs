@@ -18,7 +18,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Models.GarmentExternalPurchaseOrde
         public string SupplierCode { get; set; }
         [MaxLength(255)]
         public bool SupplierImport { get; set; }
-
+        public string CustomsCategory { get; set; }
         public DateTimeOffset OrderDate { get; set; }
         public DateTimeOffset DeliveryDate { get; set; }
         public string FreightCostBy { get; set; }
