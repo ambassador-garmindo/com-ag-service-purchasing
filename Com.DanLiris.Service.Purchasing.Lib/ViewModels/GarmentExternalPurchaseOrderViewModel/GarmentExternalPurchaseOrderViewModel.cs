@@ -13,6 +13,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentExternalPurchase
         public string EPONo { get; set; }
         public SupplierViewModel Supplier { get; set; }
 
+        public string CustomsCategory { get; set; }
         public DateTimeOffset OrderDate { get; set; }
         public DateTimeOffset DeliveryDate { get; set; }
         public string FreightCostBy { get; set; }
@@ -68,6 +69,11 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentExternalPurchase
             else if (this.OrderDate != null && this.OrderDate > this.DeliveryDate)
             {
                 yield return new ValidationResult("OrderDate is greater than delivery date", new List<string> { "DeliveryDate" });
+            }
+
+            if (String.IsNullOrWhiteSpace(this.CustomsCategory))
+            {
+                yield return new ValidationResult("CustomsCategory is requied", new List<string> { "CustomsCategory" });
             }
 
             if (Category == "FABRIC")

@@ -27,12 +27,12 @@ namespace Com.DanLiris.Service.Purchasing.WebApi.Controllers.v1.GarmentUnitRecei
 		}
 
 		[HttpGet]
-		public IActionResult Get(string no, string refNo, string roNo, string doNo, string unit, string supplier, DateTime? dateFrom, DateTime? dateTo, int page, int size, string Order = "{}")
+		public IActionResult Get(string no, string refNo, string roNo, string doNo, string unit, string supplier, string customsCategory, DateTime? dateFrom, DateTime? dateTo, int page, int size, string Order = "{}")
 		{
 			try
 			{
 				int offset = Convert.ToInt32(Request.Headers["x-timezone-offset"]);
-				var data = monitoringUnitReceiptAllFacade.GetReport(no, refNo, roNo, doNo, unit, supplier, dateFrom, dateTo,page,size,Order,offset);
+				var data = monitoringUnitReceiptAllFacade.GetReport(no, refNo, roNo, doNo, unit, supplier, customsCategory, dateFrom, dateTo, page, size, Order, offset);
 				
 				return Ok(new
 				{
@@ -53,13 +53,13 @@ namespace Com.DanLiris.Service.Purchasing.WebApi.Controllers.v1.GarmentUnitRecei
 			}
 		}
 		[HttpGet("download")]
-		public IActionResult GetXls(string no, string refNo, string roNo, string doNo, string unit, string supplier, DateTime? dateFrom, DateTime? dateTo, int page, int size, string Order = "{}")
+		public IActionResult GetXls(string no, string refNo, string roNo, string doNo, string unit, string supplier, string customsCategory, DateTime? dateFrom, DateTime? dateTo, int page, int size, string Order = "{}")
 		{
 			try
 			{
 				byte[] xlsInBytes;
 				int offset = Convert.ToInt32(Request.Headers["x-timezone-offset"]);
-				var xls = monitoringUnitReceiptAllFacade.GenerateExcel(no, refNo, roNo, doNo, unit, supplier, dateFrom, dateTo, page, size, Order, offset);
+				var xls = monitoringUnitReceiptAllFacade.GenerateExcel(no, refNo, roNo, doNo, unit, supplier, customsCategory, dateFrom, dateTo, page, size, Order, offset);
 
 				string filename = "Laporan Bon Terima Unit ALL";
 				if (dateFrom != null) filename += " " + ((DateTime)dateFrom).ToString("dd-MM-yyyy");

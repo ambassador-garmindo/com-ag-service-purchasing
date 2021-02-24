@@ -29,6 +29,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitReceiptNoteModel
         public long POItemId { get; set; }
         [MaxLength(1000)]
         public string POSerialNumber { get; set; }
+        public string CustomsCategory { get; set; }
 
         public long ProductId { get; set; }
         [MaxLength(255)]

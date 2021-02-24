@@ -47,7 +47,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentPurchaseRequestFaca
 
             List<string> searchAttributes = new List<string>()
             {
-                "PRType", "SCNo", "PRNo", "RONo", "BuyerCode", "BuyerName", "UnitName", "Article","SectionName"
+                "PRType", "SCNo", "PRNo", "RONo", "BuyerCode", "BuyerName", "UnitName", "Article", "SectionName"
             };
 
             Query = QueryHelper<GarmentPurchaseRequest>.ConfigureSearch(Query, searchAttributes, Keyword);
@@ -240,13 +240,14 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentPurchaseRequestFaca
             DateTimeOffset now = m.Date.ToOffset(new TimeSpan(timeZone, 0, 0));
             string y = now.ToString("yy");
 
-            var unitCode = new List<string> { null, "C2A", "C2B", "C2C", "C1A", "C1B", "AG2" }.IndexOf(m.UnitCode);
+            var unitCode = new List<string> { null, "AG2", "C2A", "C2B", "C2C", "C1A", "C1B" }.IndexOf(m.UnitCode);
             if (unitCode < 1)
             {
                 throw new Exception("UnitCode format is invalid when Generate RONo");
             }
 
-            var prefix = string.Concat(y, unitCode);
+            var prefixOld = string.Concat(y, unitCode);
+            var prefix = string.Concat("AG", prefixOld);
             var padding = 5;
             var suffix = string.Empty;
 
@@ -278,7 +279,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentPurchaseRequestFaca
             DateTimeOffset now = m.Date.ToOffset(new TimeSpan(timeZone, 0, 0));
             string y = now.ToString("yy");
 
-            var unitCode = new List<string> { null, "C2A", "C2B", "C2C", "C1A", "C1B", "AG2" }.IndexOf(m.UnitCode);
+            var unitCode = new List<string> { null, "AG2", "C2A", "C2B", "C2C", "C1A", "C1B" }.IndexOf(m.UnitCode);
             if (unitCode < 1)
             {
                 throw new Exception("UnitCode format is invalid when Generate POSerialnumber");

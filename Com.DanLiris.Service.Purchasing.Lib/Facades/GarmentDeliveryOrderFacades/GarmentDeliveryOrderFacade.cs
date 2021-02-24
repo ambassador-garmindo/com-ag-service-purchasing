@@ -32,7 +32,9 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
 
         private readonly PurchasingDbContext dbContext;
         public readonly IServiceProvider serviceProvider;
+
         private readonly DbSet<GarmentDeliveryOrder> dbSet;
+
         //private readonly DbSet<GarmentDeliveryOrderItem> dbSetItem;
 
         private readonly IMapper mapper;
@@ -461,9 +463,44 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
             }
             else
             {
-
                 Query = QueryHelper<GarmentDeliveryOrder>.ConfigureOrder(Query, OrderDictionary).Include(m => m.Items)
-                    .ThenInclude(i => i.Details).Where(s => s.IsInvoice == false && s.CustomsId != 0);
+                    .ThenInclude(i => i.Details)
+                    .Where(s => s.IsInvoice == false);
+
+                var gdo = Query.ToList();
+                var _gdo = new List<GarmentDeliveryOrder>();
+
+
+                foreach (var a in gdo)
+                {
+                    bool check = false;
+
+                    foreach (var b in a.Items)
+                    {
+                        var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
+                        if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
+                        {
+                            if(a.CustomsId != 0)
+                            {
+                                check = true;
+                                break; 
+                            }
+                        }
+                        else
+                        {
+                            check = true;
+                            break;
+                        }
+                    }
+
+                    if (check)
+                    {
+                        _gdo.Add(a);
+                    }
+                }
+
+                Query = _gdo.AsQueryable();
+                //.Where(s => s.IsInvoice == false && s.CustomsId != 0);
             }
 
             return Query;
@@ -500,11 +537,37 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
 
             Query = QueryHelper<GarmentDeliveryOrder>.ConfigureOrder(Query, OrderDictionary).Include(m => m.Items)
                 .ThenInclude(i => i.Details)
-                .Where(s => s.CustomsId == 0
+                .Where(s => s.CustomsId == 0 && s.IsInvoice == false
                     && (DOCurrencyCodes.Count() == 0 || DOCurrencyCodes.Contains(s.DOCurrencyCode))
                     && (SupplierIds.Count() == 0 || SupplierIds.Contains(s.SupplierId))
                     );
             //}
+
+            var gdo = Query.ToList();
+            var _gdo = new List<GarmentDeliveryOrder>();
+
+
+            foreach (var a in gdo)
+            {
+                bool check = false;
+
+                foreach (var b in a.Items)
+                {
+                    var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
+                    if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
+                    {
+                        check = true;
+                        break;   
+                    }
+                }
+
+                if (check)
+                {
+                    _gdo.Add(a);
+                }
+            }
+
+            Query = _gdo.AsQueryable();
 
             return Query;
         }
@@ -570,20 +633,55 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
             FilterDictionary.Remove("UnitId");
 
             IQueryable<GarmentDeliveryOrder> Query = dbSet
-                .Where(m => m.DONo.Contains(Keyword ?? "") && (filterSupplierId == 0 ? true : m.SupplierId == filterSupplierId) && m.CustomsId != 0 && m.Items.Any(i => i.Details.Any(d => d.ReceiptQuantity == 0 && (string.IsNullOrWhiteSpace(filterUnitId) ? true : d.UnitId == filterUnitId))))
+                .Where(m => m.DONo.Contains(Keyword ?? "") && (filterSupplierId == 0 ? true : m.SupplierId == filterSupplierId) && m.Items.Any(i => i.Details.Any(d => d.ReceiptQuantity == 0 && (string.IsNullOrWhiteSpace(filterUnitId) ? true : d.UnitId == filterUnitId))))
                 .Select(m => new GarmentDeliveryOrder
                 {
                     Id = m.Id,
                     DONo = m.DONo,
                     LastModifiedUtc = m.LastModifiedUtc,
+                    CustomsId = m.CustomsId,
                     Items = m.Items.Select(i => new GarmentDeliveryOrderItem
                     {
                         Id = i.Id,
+                        EPONo = i.EPONo,
                         Details = i.Details.Where(d => d.ReceiptQuantity == 0 && (string.IsNullOrWhiteSpace(filterUnitId) ? true : d.UnitId == filterUnitId)).ToList()
                     }).ToList()
                 });
 
             Query = QueryHelper<GarmentDeliveryOrder>.ConfigureFilter(Query, FilterDictionary);
+
+            var gdo = Query.ToList();
+            var _gdo = new List<GarmentDeliveryOrder>();
+
+            foreach (var a in gdo)
+            {
+                bool check = false;
+
+                foreach (var b in a.Items)
+                {
+                    var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
+                    if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
+                    {
+                        if (a.CustomsId != 0)
+                        {
+                            check = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        check = true;
+                        break;
+                    }
+                }
+
+                if (check)
+                {
+                    _gdo.Add(a);
+                }
+            }
+
+            Query = _gdo.AsQueryable();
 
             Dictionary<string, string> OrderDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Order);
             Query = QueryHelper<GarmentDeliveryOrder>.ConfigureOrder(Query, OrderDictionary);
@@ -604,12 +702,13 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                     items = s.items.Select(i => new
                     {
                         i.Id,
+                        //i.purchaseOrderExternal.no,
                         fulfillments = i.fulfillments.Select(d => new
                         {
                             d.Id,
 
                             d.ePOItemId,
-
+                            
                             d.pRId,
                             d.pRNo,
                             d.pRItemId,
@@ -617,6 +716,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                             d.pOId,
                             d.pOItemId,
                             d.poSerialNumber,
+                            customsCategory = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo == i.purchaseOrderExternal.no).Select(m => m.CustomsCategory).FirstOrDefault(),
 
                             d.product,
                             productRemark = dbContext.GarmentExternalPurchaseOrderItems.Where(m => m.Id == d.ePOItemId).Select(m => m.Remark).FirstOrDefault(),

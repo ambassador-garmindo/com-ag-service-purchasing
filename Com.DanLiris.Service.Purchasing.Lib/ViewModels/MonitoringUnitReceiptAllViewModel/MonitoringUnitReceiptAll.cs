@@ -13,6 +13,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.MonitoringUnitReceiptAl
 		public string supplier { get; set; }
 		public string doNo { get; set; }
 		public string poEksternalNo { get; set; }
+        public string customsCategory { get; set; }
 		public string poRefPR { get; set; }
 		public string roNo { get; set; }
 		public string article { get; set; }

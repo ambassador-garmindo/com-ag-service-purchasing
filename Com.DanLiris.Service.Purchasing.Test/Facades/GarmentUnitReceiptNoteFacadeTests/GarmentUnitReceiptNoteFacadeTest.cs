@@ -473,10 +473,10 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.GarmentUnitReceiptNoteFac
             var Responses = await uFacade.Create(datas);
             Assert.NotEqual(0, Responses);
             var Facade = new MonitoringUnitReceiptAllFacade(ServiceProvider, _dbContext(GetCurrentMethod()));
-            var Response = Facade.GetReport(null, null, null, null, null, null, null, null, 1, 25, "{}", 7);
+            var Response = Facade.GetReport(null, null, null, null, null, null, null, null, null, 1, 25, "{}", 7);
             Assert.NotEqual(0, Response.Item2);
 
-            var Response1 = Facade.GetReport(null, null, null, null, null, null, null, null, 1, 25, "{}", 7);
+            var Response1 = Facade.GetReport(null, null, null, null, null, null, null, null, null, 1, 25, "{}", 7);
             Assert.NotNull(Response1.Item1);
 
 
@@ -493,10 +493,10 @@ namespace Com.DanLiris.Service.Purchasing.Test.Facades.GarmentUnitReceiptNoteFac
             var Responses = await uFacade.Create(datas);
             Assert.NotEqual(0, Responses);
             var Facade = new MonitoringUnitReceiptAllFacade(ServiceProvider, _dbContext(GetCurrentMethod()));
-            var Response = Facade.GetReport(null, null, null, null, null, null, null, null, 1, 25, "{}", 7);
+            var Response = Facade.GetReport(null, null, null, null, null, null, null, null, null, 1, 25, "{}", 7);
             Assert.NotEqual(0, Response.Item2);
 
-            var Response1 = Facade.GenerateExcel(null, null, null, null, null, null, null, null, 1, 25, "{}", 7);
+            var Response1 = Facade.GenerateExcel(null, null, null, null, null, null, null, null, null, 1, 25, "{}", 7);
             Assert.IsType<System.IO.MemoryStream>(Response1);
         }
 
