@@ -189,7 +189,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitExpenditureNote
 
                     Created = await dbContext.SaveChangesAsync();
 
-                    if (garmentUnitExpenditureNote.ExpenditureType == "EXTERNAL" && garmentUnitExpenditureNote.ExpenditureTo== "PEMBELIAN")
+                    if (garmentUnitExpenditureNote.ExpenditureType == "EXTERNAL" && garmentUnitExpenditureNote.ExpenditureTo == "PEMBELIAN")
                     {
                         List<long> epoItemIds = new List<long>();
                         List<long> epoIds = new List<long>();
@@ -352,6 +352,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitExpenditureNote
                                 SupplierId = garmentExternalPurchaseOrder.SupplierId,
                                 SupplierImport = garmentExternalPurchaseOrder.SupplierImport,
                                 SupplierName = garmentExternalPurchaseOrder.SupplierName,
+                                CustomsCategory = garmentExternalPurchaseOrder.CustomsCategory,
                                 Washing = garmentExternalPurchaseOrder.Washing,
                                 WetRubbing = garmentExternalPurchaseOrder.WetRubbing,
                                 Items = epoItems,
@@ -477,6 +478,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitExpenditureNote
                                 POId = garmentInternalPurchaseOrderItem.GPOId,
                                 POItemId = item.POItemId,
                                 POSerialNumber = item.POSerialNumber,
+                                CustomsCategory = OldurnItem.CustomsCategory,
                                 ProductId = item.ProductId,
                                 ProductCode = item.ProductCode,
                                 ProductName = item.ProductName,
@@ -555,7 +557,6 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitExpenditureNote
                                 DOCurrencyRate= gUenItem.DOCurrencyRate,
                                 ReturQuantity=0,
                                 FabricType=gUenItem.FabricType,
-                                
                             };
                             unitDOItems.Add(garmentUnitDOItems);
                             EntityExtension.FlagForCreate(garmentUnitDOItems, identityService.Username, USER_AGENT);
@@ -575,13 +576,13 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitExpenditureNote
                             StorageCode= garmentUnitExpenditureNote.StorageRequestCode,
                             StorageName= garmentUnitExpenditureNote.StorageRequestName,
                             RONo= oldGarmentUnitDO.RONo,
-                            Article=oldGarmentUnitDO.Article,
+                            Article= oldGarmentUnitDO.Article,
                             IsUsed=true,
                             Items= unitDOItems,
                             UENFromId= garmentUnitExpenditureNote.Id,
                             UENFromNo= garmentUnitExpenditureNote.UENNo,
                             UnitDOFromId= oldGarmentUnitDO.Id,
-                            UnitDOFromNo=oldGarmentUnitDO.UnitDONo
+                            UnitDOFromNo= oldGarmentUnitDO.UnitDONo
                         };
 
                         garmentUnitDO.UnitDONo = await garmentUnitDeliveryOrderFacade.GenerateNo(garmentUnitDO);
@@ -623,7 +624,6 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitExpenditureNote
                                 DOCurrencyRate= unitDOItem.DOCurrencyRate,
                                 BasicPrice= gUenItem1.BasicPrice,
                                 Conversion= gUenItem1.Conversion
-
                             };
                             garmentUENItems.Add(uenItem);
 

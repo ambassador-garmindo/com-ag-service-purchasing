@@ -71,6 +71,11 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentExternalPurchase
                 yield return new ValidationResult("OrderDate is greater than delivery date", new List<string> { "DeliveryDate" });
             }
 
+            if (String.IsNullOrWhiteSpace(this.CustomsCategory))
+            {
+                yield return new ValidationResult("CustomsCategory is requied", new List<string> { "CustomsCategory" });
+            }
+
             if (Category == "FABRIC")
             {
                 if (string.IsNullOrWhiteSpace(DryRubbing))

@@ -478,7 +478,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                     foreach (var b in a.Items)
                     {
                         var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
-                        if (epo.CustomsCategory.Equals("FASILITAS"))
+                        if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
                         {
                             if(a.CustomsId != 0)
                             {
@@ -554,7 +554,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                 foreach (var b in a.Items)
                 {
                     var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
-                    if (epo.CustomsCategory.Equals("FASILITAS"))
+                    if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
                     {
                         check = true;
                         break;   
@@ -660,7 +660,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                 foreach (var b in a.Items)
                 {
                     var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
-                    if (epo.CustomsCategory.Equals("FASILITAS"))
+                    if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
                     {
                         if (a.CustomsId != 0)
                         {

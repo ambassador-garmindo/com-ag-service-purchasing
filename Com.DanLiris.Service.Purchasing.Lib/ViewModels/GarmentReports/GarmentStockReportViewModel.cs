@@ -9,6 +9,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentReports
         public string ProductCode { get; set; }
         public string RO { get; set; }
         public string PlanPo { get; set; }
+        public string CustomsCategory { get; set; }
         public string NoArticle { get; set; }
         public string ProductName { get; set; }
         public string ProductRemark { get; set; }

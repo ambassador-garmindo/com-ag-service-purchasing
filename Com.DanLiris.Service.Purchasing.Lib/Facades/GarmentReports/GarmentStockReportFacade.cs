@@ -26,18 +26,22 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
             this.dbSet = dbContext.Set<GarmentDeliveryOrder>();
         }
 
-        public IEnumerable<GarmentStockReportViewModel> GetStockQuery(string ctg, string unitcode, DateTime? datefrom, DateTime? dateto, int offset)
+        public IEnumerable<GarmentStockReportViewModel> GetStockQuery(string ctg, string unitcode, DateTime? datefrom, DateTime? dateto, int offset, string suppliertype, string customstype)
         {
             DateTime DateFrom = datefrom == null ? new DateTime(1970, 1, 1) : (DateTime)datefrom;
             DateTime DateTo = dateto == null ? DateTime.Now : (DateTime)dateto;
 
             var PPAwal = (from a in dbContext.GarmentUnitReceiptNotes
                           join b in dbContext.GarmentUnitReceiptNoteItems on a.Id equals b.URNId
-                          join d in dbContext.GarmentDeliveryOrderDetails on b.POId equals d.POId
+                          join d in dbContext.GarmentDeliveryOrderDetails on b.DODetailId equals d.Id
                           join f in dbContext.GarmentInternalPurchaseOrders on b.POId equals f.Id
                           join e in dbContext.GarmentReceiptCorrectionItems on b.Id equals e.URNItemId into RC
                           from ty in RC.DefaultIfEmpty()
-                          join c in dbContext.GarmentUnitExpenditureNoteItems on b.UENItemId equals c.Id into UE
+                          join x in dbContext.GarmentUnitDeliveryOrderItems on b.Id equals x.URNItemId into GUDI
+                          from xx in GUDI.DefaultIfEmpty()
+                          join y in dbContext.GarmentUnitDeliveryOrders on xx.UnitDOId equals y.Id into GUD
+                          from yy in GUD.DefaultIfEmpty()
+                          join c in dbContext.GarmentUnitExpenditureNoteItems on xx.Id equals c.UnitDOItemId into UE
                           from ww in UE.DefaultIfEmpty()
                           join r in dbContext.GarmentUnitExpenditureNotes on ww.UENId equals r.Id into UEN
                           from dd in UEN.DefaultIfEmpty()
@@ -46,7 +50,19 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
                           join epo in dbContext.GarmentExternalPurchaseOrders on epoItem.GarmentEPOId equals epo.Id into EPO
                           from epo in EPO.DefaultIfEmpty()
                           where d.CodeRequirment == (String.IsNullOrWhiteSpace(ctg) ? d.CodeRequirment : ctg)
+                          && (!String.IsNullOrWhiteSpace(suppliertype) && !String.IsNullOrWhiteSpace(customstype) ? b.CustomsCategory == suppliertype + " " + customstype
+                          : (!String.IsNullOrWhiteSpace(suppliertype) ? b.CustomsCategory.Contains(suppliertype)
+                          : (!String.IsNullOrWhiteSpace(customstype) ? b.CustomsCategory.Substring(b.CustomsCategory.IndexOf(' ') + 1) == customstype
+                          : true)))
                           && a.IsDeleted == false && b.IsDeleted == false
+
+                          // 17-02-2021 : YOKA
+                          //&& (!String.IsNullOrWhiteSpace(suppliertype) && !String.IsNullOrWhiteSpace(customstype) ? b.CustomsCategory == suppliertype + " " + customstype
+                          //: (!String.IsNullOrWhiteSpace(suppliertype) ? b.CustomsCategory.Contains(suppliertype)
+                          //: (!String.IsNullOrWhiteSpace(customstype) ? b.CustomsCategory.Substring(b.CustomsCategory.IndexOf(' ')) == customstype
+                          //: true)))
+                          //: true))
+
                           //String.IsNullOrEmpty(a.UENNo) ? false : a.UENNo.Contains(unitcode)
                           //|| a.UnitCode == unitcode
                           //a.UENNo.Contains(unitcode) || a.UnitCode == unitcode
@@ -58,6 +74,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
                           {
                               ReceiptDate = a.ReceiptDate,
                               CodeRequirment = d.CodeRequirment,
+                              CustomsCategory = b.CustomsCategory,
                               ProductCode = b.ProductCode,
                               ProductName = b.ProductName,
                               ProductRemark = b.ProductRemark,
@@ -82,18 +99,25 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
                               PaymentMethod = epo.PaymentMethod == null ? "-": epo.PaymentMethod,
                               a.IsDeleted
                           });
-            var CobaPP = from a in PPAwal
-                             //where a.ReceiptDate.AddHours(offset).Date < DateFrom.Date && a.CodeRequirment == (String.IsNullOrWhiteSpace(ctg) ? a.CodeRequirment : ctg) && a.IsDeleted == false
-                         where a.UENNo.Contains((String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode)) || a.UnitCode == (String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode)
-                         select a;
-            var PPAkhir = from a in dbContext.GarmentUnitReceiptNotes
+
+            var CobaPP = (from a in PPAwal
+                          //where a.ReceiptDate.AddHours(offset).Date < DateFrom.Date && a.CodeRequirment == (String.IsNullOrWhiteSpace(ctg) ? a.CodeRequirment : ctg) && a.IsDeleted == false
+                          where (!String.IsNullOrWhiteSpace(a.UENNo) ? a.UENNo.Contains((String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode)) || a.UnitCode == (String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode) : a.UnitCode == (String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode))
+                          //a.UENNo.Contains((String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode)) || a.UnitCode == (String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode)
+                          select a);
+
+            var PPAkhir = (from a in dbContext.GarmentUnitReceiptNotes
                           join b in dbContext.GarmentUnitReceiptNoteItems on a.Id equals b.URNId
-                          join d in dbContext.GarmentDeliveryOrderDetails on b.POId equals d.POId
+                          join d in dbContext.GarmentDeliveryOrderDetails on b.DODetailId equals d.Id
                           join f in dbContext.GarmentInternalPurchaseOrders on b.POId equals f.Id
                           //join f in SaldoAwal on b.POId equals f.POID
                           join e in dbContext.GarmentReceiptCorrectionItems on b.Id equals e.URNItemId into RC
                           from ty in RC.DefaultIfEmpty()
-                          join c in dbContext.GarmentUnitExpenditureNoteItems on b.UENItemId equals c.Id into UE
+                          join x in dbContext.GarmentUnitDeliveryOrderItems on b.Id equals x.URNItemId into GUDI
+                          from xx in GUDI.DefaultIfEmpty()
+                          join y in dbContext.GarmentUnitDeliveryOrders on xx.UnitDOId equals y.Id into GUD
+                          from yy in GUD.DefaultIfEmpty()
+                          join c in dbContext.GarmentUnitExpenditureNoteItems on xx.Id equals c.UnitDOItemId into UE
                           from ww in UE.DefaultIfEmpty()
                           join r in dbContext.GarmentUnitExpenditureNotes on ww.UENId equals r.Id into UEN
                           from dd in UEN.DefaultIfEmpty()
@@ -103,18 +127,31 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
                           from epo in EPO.DefaultIfEmpty()
 
                           where d.CodeRequirment == (String.IsNullOrWhiteSpace(ctg) ? d.CodeRequirment : ctg)
+                          && (!String.IsNullOrWhiteSpace(suppliertype) && !String.IsNullOrWhiteSpace(customstype) ? b.CustomsCategory == suppliertype + " " + customstype
+                          : (!String.IsNullOrWhiteSpace(suppliertype) ? b.CustomsCategory.Contains(suppliertype)
+                          : (!String.IsNullOrWhiteSpace(customstype) ? b.CustomsCategory.Substring(b.CustomsCategory.IndexOf(' ') + 1) == customstype
+                          : true)))
                           && a.IsDeleted == false && b.IsDeleted == false
+
+                          // 17-02-2021 : YOKA
+                          //&& (!String.IsNullOrWhiteSpace(suppliertype) && !String.IsNullOrWhiteSpace(customstype) ? b.CustomsCategory == suppliertype + " " + customstype
+                          //: (!String.IsNullOrWhiteSpace(suppliertype) ? b.CustomsCategory.Contains(suppliertype)
+                          //: (!String.IsNullOrWhiteSpace(customstype) ? b.CustomsCategory.Substring(b.CustomsCategory.IndexOf(' ') + 1) == customstype
+                          //: true)))
+                          //: true))
+
                           //String.IsNullOrEmpty(a.UENNo) ? false : a.UENNo.Contains(unitcode)
                           //|| a.UnitCode == unitcode
                           //a.UnitCode == unitcode || a.UENNo.Contains(unitcode)
                           // a.UENNo.Contains(unitcode) || a.UnitCode == unitcode     /*String.IsNullOrEmpty(a.UENNo) ? true :*/ 
-                         && a.CreatedUtc.AddHours(offset).Date >= DateFrom.Date
+                          && a.CreatedUtc.AddHours(offset).Date >= DateFrom.Date
                           && a.CreatedUtc.AddHours(offset).Date <= DateTo.Date
 
                           select new
                           {
                               ReceiptDate = a.ReceiptDate,
                               CodeRequirment = d.CodeRequirment,
+                              CustomsCategory = b.CustomsCategory,
                               ProductCode = b.ProductCode,
                               ProductName = b.ProductName,
                               ProductRemark = b.ProductRemark,
@@ -138,69 +175,79 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
                               ExpenditureTo = dd.ExpenditureTo == null ? "-" : dd.ExpenditureTo,
                               PaymentMethod = epo.PaymentMethod == null ? "-" : epo.PaymentMethod,
                               a.IsDeleted
-                          };
-            var CobaPPAkhir = from a in PPAkhir
-                              where a.UENNo.Contains((String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode)) || a.UnitCode == (String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode)
-                              //where a.ReceiptDate.AddHours(offset).Date >= DateFrom.Date
-                              //      && a.ReceiptDate.AddHours(offset).Date <= DateTo.Date
-                              //      && a.CodeRequirment == (String.IsNullOrWhiteSpace(ctg) ? a.CodeRequirment : ctg)
-                              //      && a.IsDeleted == false 
-                              select a;
-            var SaldoAwal = from query in CobaPP
-                            group query by new { query.ProductCode, query.ProductName, query.RO, query.PlanPo, query.POId, query.UnitCode, query.UnitSenderCode, query.UnitRequestName } into data
-                            select new GarmentStockReportViewModel
-                            {
-                                ProductCode = data.Key.ProductCode,
-                                RO = data.Key.RO,
-                                PlanPo = data.FirstOrDefault().PlanPo,
-                                NoArticle = data.FirstOrDefault().NoArticle,
-                                ProductName = data.FirstOrDefault().ProductName,
-                                ProductRemark= data.FirstOrDefault().ProductRemark,
-                                Buyer = data.FirstOrDefault().Buyer,
-                                BeginningBalanceQty = data.Sum(x => x.QtyReceipt) + Convert.ToDecimal(data.Sum(x => x.QtyCorrection)) - Convert.ToDecimal(data.Sum(x => x.QtyExpend)),
-                                BeginningBalanceUom = data.FirstOrDefault().Uom,
-                                ReceiptCorrectionQty = 0,
-                                ReceiptQty =0,
-                                ReceiptUom =data.FirstOrDefault().Uom,
-                                ExpendQty =0,
-                                ExpandUom = data.FirstOrDefault().Uom,
-                                EndingBalanceQty = 0,
-                                EndingUom= data.FirstOrDefault().Uom,
-                                POId = data.FirstOrDefault().POId,
-                                PaymentMethod = data.FirstOrDefault().PaymentMethod
+                          });
+            
+            var CobaPPAkhir = (from a in PPAkhir
+                              where (!String.IsNullOrWhiteSpace(a.UENNo) ? a.UENNo.Contains((String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode)) || a.UnitCode == (String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode) : a.UnitCode == (String.IsNullOrWhiteSpace(unitcode) ? a.UnitCode : unitcode))
+                               //where a.ReceiptDate.AddHours(offset).Date >= DateFrom.Date
+                               //      && a.ReceiptDate.AddHours(offset).Date <= DateTo.Date
+                               //      && a.CodeRequirment == (String.IsNullOrWhiteSpace(ctg) ? a.CodeRequirment : ctg)
+                               //      && a.IsDeleted == false 
+                               select a);
 
-                            };
-            var SaldoAkhir = from query in CobaPPAkhir
-                             group query by new { query.ProductCode, query.ProductName, query.RO, query.PlanPo, query.POId, query.UnitCode, query.UnitSenderCode, query.UnitRequestName } into data
-                             select new GarmentStockReportViewModel
-                             {
-                                 ProductCode = data.Key.ProductCode,
-                                 RO = data.Key.RO,
-                                 PlanPo = data.FirstOrDefault().PlanPo,
-                                 NoArticle = data.FirstOrDefault().NoArticle,
-                                 ProductName = data.FirstOrDefault().ProductName,
-                                 ProductRemark = data.FirstOrDefault().ProductRemark,
-                                 Buyer = data.FirstOrDefault().Buyer,
-                                 BeginningBalanceQty =0,
-                                 BeginningBalanceUom = data.FirstOrDefault().Uom,
-                                 ReceiptCorrectionQty = 0,
-                                 ReceiptQty = data.Sum(x => x.QtyReceipt),
-                                 ReceiptUom = data.FirstOrDefault().Uom,
-                                 ExpendQty = data.Sum(x => x.QtyExpend),
-                                 ExpandUom = data.FirstOrDefault().Uom,
-                                 EndingBalanceQty = Convert.ToDecimal(Convert.ToDouble(data.Sum(x => x.QtyReceipt)) - data.Sum(x => x.QtyExpend)),
-                                 EndingUom = data.FirstOrDefault().Uom,
-                                 POId = data.FirstOrDefault().POId,
-                                 PaymentMethod = data.FirstOrDefault().PaymentMethod
-                             };
+            var SaldoAwal = Enumerable.Empty<GarmentStockReportViewModel>().AsQueryable();
+            var SaldoAkhir = Enumerable.Empty<GarmentStockReportViewModel>().AsQueryable();
+
+                SaldoAwal =     (from query in CobaPP
+                                group query by new { query.ProductCode, query.ProductName, query.RO, query.PlanPo, query.POId, query.UnitCode, query.UnitSenderCode, query.UnitRequestName, query.CustomsCategory } into data
+                                select new GarmentStockReportViewModel
+                                {
+                                    ProductCode = data.Key.ProductCode,
+                                    RO = data.Key.RO,
+                                    PlanPo = data.FirstOrDefault().PlanPo,
+                                    CustomsCategory = data.FirstOrDefault().CustomsCategory,
+                                    NoArticle = data.FirstOrDefault().NoArticle,
+                                    ProductName = data.FirstOrDefault().ProductName,
+                                    ProductRemark= data.FirstOrDefault().ProductRemark,
+                                    Buyer = data.FirstOrDefault().Buyer,
+                                    BeginningBalanceQty = data.Sum(x => x.QtyReceipt) + Convert.ToDecimal(data.Sum(x => x.QtyCorrection)) - Convert.ToDecimal(data.Sum(x => x.QtyExpend)),
+                                    BeginningBalanceUom = data.FirstOrDefault().Uom,
+                                    ReceiptCorrectionQty = 0,
+                                    ReceiptQty =0,
+                                    ReceiptUom =data.FirstOrDefault().Uom,
+                                    ExpendQty =0,
+                                    ExpandUom = data.FirstOrDefault().Uom,
+                                    EndingBalanceQty = 0,
+                                    EndingUom= data.FirstOrDefault().Uom,
+                                    POId = data.FirstOrDefault().POId,
+                                    PaymentMethod = data.FirstOrDefault().PaymentMethod
+                                });
+
+               SaldoAkhir =     (from query in CobaPPAkhir
+                                group query by new { query.ProductCode, query.ProductName, query.RO, query.PlanPo, query.POId, query.UnitCode, query.UnitSenderCode, query.UnitRequestName, query.CustomsCategory } into data
+                                select new GarmentStockReportViewModel
+                                {
+                                    ProductCode = data.Key.ProductCode,
+                                    RO = data.Key.RO,
+                                    PlanPo = data.FirstOrDefault().PlanPo,
+                                    CustomsCategory = data.FirstOrDefault().CustomsCategory,
+                                    NoArticle = data.FirstOrDefault().NoArticle,
+                                    ProductName = data.FirstOrDefault().ProductName,
+                                    ProductRemark = data.FirstOrDefault().ProductRemark,
+                                    Buyer = data.FirstOrDefault().Buyer,
+                                    BeginningBalanceQty =0,
+                                    BeginningBalanceUom = data.FirstOrDefault().Uom,
+                                    ReceiptCorrectionQty = 0,
+                                    ReceiptQty = data.Sum(x => x.QtyReceipt),
+                                    ReceiptUom = data.FirstOrDefault().Uom,
+                                    ExpendQty = data.Sum(x => x.QtyExpend),
+                                    ExpandUom = data.FirstOrDefault().Uom,
+                                    EndingBalanceQty = Convert.ToDecimal(Convert.ToDouble(data.Sum(x => x.QtyReceipt)) - data.Sum(x => x.QtyExpend)),
+                                    EndingUom = data.FirstOrDefault().Uom,
+                                    POId = data.FirstOrDefault().POId,
+                                    PaymentMethod = data.FirstOrDefault().PaymentMethod
+                                });
+
             List<GarmentStockReportViewModel> Data1 = SaldoAwal.Concat(SaldoAkhir).ToList();
+
             var Data = (from query in Data1
-                        group query by new { query.POId, query.ProductCode, query.RO } into groupdata
+                        group query by new { query.POId, query.ProductCode, query.RO, query.CustomsCategory } into groupdata
                         select new GarmentStockReportViewModel
                         {
                             ProductCode = groupdata.FirstOrDefault().ProductCode == null ? "-" : groupdata.FirstOrDefault().ProductCode,
                             RO = groupdata.FirstOrDefault().RO == null ? "-" : groupdata.FirstOrDefault().RO,
                             PlanPo = groupdata.FirstOrDefault().PlanPo == null ? "-" : groupdata.FirstOrDefault().PlanPo,
+                            CustomsCategory = groupdata.FirstOrDefault().CustomsCategory == null ? "-" : groupdata.FirstOrDefault().CustomsCategory,
                             NoArticle = groupdata.FirstOrDefault().NoArticle == null ? "-" : groupdata.FirstOrDefault().NoArticle,
                             ProductName = groupdata.FirstOrDefault().ProductName == null ? "-" : groupdata.FirstOrDefault().ProductName,
                             ProductRemark = groupdata.FirstOrDefault().ProductRemark,
@@ -220,22 +267,22 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
             return Data.AsQueryable();
         }
 
-        public Tuple<List<GarmentStockReportViewModel>, int> GetStockReport(int offset, string unitcode, string tipebarang, int page, int size, string Order, DateTime? dateFrom, DateTime? dateTo)
+        public Tuple<List<GarmentStockReportViewModel>, int> GetStockReport(int offset, string unitcode, string tipebarang, int page, int size, string Order, DateTime? dateFrom, DateTime? dateTo, string suppliertype, string customstype)
         {
             //var Query = GetStockQuery(tipebarang, unitcode, dateFrom, dateTo, offset);
             //Query = Query.OrderByDescending(x => x.SupplierName).ThenBy(x => x.Dono);
-            List<GarmentStockReportViewModel> Data = GetStockQuery(tipebarang, unitcode, dateFrom, dateTo, offset).ToList();
+            List<GarmentStockReportViewModel> Data = GetStockQuery(tipebarang, unitcode, dateFrom, dateTo, offset, suppliertype, customstype).ToList();
             Data = Data.OrderByDescending(x => x.ProductCode).ThenBy(x => x.ProductName).ToList();
             //int TotalData = Data.Count();
             return Tuple.Create(Data, Data.Count());
         }
 
-        public MemoryStream GenerateExcelStockReport(string ctg, string unitcode, DateTime? datefrom, DateTime? dateto, int offset)
+        public MemoryStream GenerateExcelStockReport(string ctg, string unitcode, DateTime? datefrom, DateTime? dateto, int offset, string suppliertype, string customstype)
         {
-            var data = GetStockQuery(ctg, unitcode, datefrom, dateto, offset);
+            var data = GetStockQuery(ctg, unitcode, datefrom, dateto, offset, suppliertype, customstype);
             var Query = data.OrderByDescending(x => x.ProductCode).ThenBy(x => x.ProductName).ToList();
             DataTable result = new DataTable();
-            var headers = new string[] { "No","Kode Barang", "No RO", "Plan PO", "Artikel", "Nama Barang","Keterangan Barang", "Buyer","Saldo Awal","Saldo Awal2", "Penerimaan", "Penerimaan1", "Penerimaan2","Pengeluaran","Pengeluaran1", "Saldo Akhir", "Saldo Akhir1", "Asal" }; 
+            var headers = new string[] { "No", "Kode Barang", "No RO", "Plan PO", "Jenis Pembelian", "Artikel", "Nama Barang", "Keterangan Barang", "Buyer", "Saldo Awal", "Saldo Awal2", "Penerimaan", "Penerimaan1", "Penerimaan2", "Pengeluaran", "Pengeluaran1", "Saldo Akhir", "Saldo Akhir1", "Asal" }; 
             var subheaders = new string[] { "Jumlah", "Sat", "Jumlah", "Koreksi", "Sat", "Jumlah", "Sat", "Jumlah", "Sat" };
             for (int i = 0; i < headers.Length; i++)
             {
@@ -252,7 +299,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
                 //    item.ExpandUom, item.EndingBalanceQty, item.EndingUom, item.From);
 
 
-                result.Rows.Add(index++, item.ProductCode, item.RO, item.PlanPo, item.NoArticle, item.ProductName, item.ProductRemark, item.Buyer,
+                result.Rows.Add(index++, item.ProductCode, item.RO, item.PlanPo, item.CustomsCategory, item.NoArticle, item.ProductName, item.ProductRemark, item.Buyer,
 
                     Convert.ToDouble(item.BeginningBalanceQty), item.BeginningBalanceUom, Convert.ToDouble(item.ReceiptQty), Convert.ToDouble(item.ReceiptCorrectionQty), item.ReceiptUom,
                     item.ExpendQty,
@@ -265,15 +312,15 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
             var sheet = package.Workbook.Worksheets.Add("Data");
 
             sheet.Cells["A3"].LoadFromDataTable(result, false, OfficeOpenXml.Table.TableStyles.Light16);
-            sheet.Cells["I1"].Value = headers[8];
-            sheet.Cells["I1:J1"].Merge = true;
+            sheet.Cells["J1"].Value = headers[8];
+            sheet.Cells["J1:K1"].Merge = true;
 
-            sheet.Cells["K1"].Value = headers[10];
-            sheet.Cells["K1:M1"].Merge = true;
-            sheet.Cells["N1"].Value = headers[13];
-            sheet.Cells["N1:O1"].Merge = true;
-            sheet.Cells["P1"].Value = headers[15];
-            sheet.Cells["P1:Q1"].Merge = true;
+            sheet.Cells["L1"].Value = headers[10];
+            sheet.Cells["L1:N1"].Merge = true;
+            sheet.Cells["O1"].Value = headers[13];
+            sheet.Cells["O1:P1"].Merge = true;
+            sheet.Cells["Q1"].Value = headers[15];
+            sheet.Cells["Q1:R1"].Merge = true;
 
             foreach (var i in Enumerable.Range(0, 8))
             {
@@ -284,22 +331,22 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
 
             for (var i = 0; i < 9; i++)
             {
-                var col = (char)('I' + i);
+                var col = (char)('J' + i);
                 sheet.Cells[$"{col}2"].Value = subheaders[i];
 
             }
 
             foreach (var i in Enumerable.Range(0, 1))
             {
-                var col = (char)('R' + i);
-                sheet.Cells[$"{col}1"].Value = headers[i + 17];
+                var col = (char)('S' + i);
+                sheet.Cells[$"{col}1"].Value = headers[i + 18];
                 sheet.Cells[$"{col}1:{col}2"].Merge = true;
             }
 
-            sheet.Cells["A1:R2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            sheet.Cells["A1:R2"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
-            sheet.Cells["A1:R2"].Style.Font.Bold = true;
-            var widths = new int[] {10, 15, 15, 20, 20, 15, 20, 15, 10, 10, 10, 10, 10, 10, 10, 10, 10,15 };
+            sheet.Cells["A1:S2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            sheet.Cells["A1:S2"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            sheet.Cells["A1:S2"].Style.Font.Bold = true;
+            var widths = new int[] {10, 15, 15, 20, 20 , 20, 15, 20, 15, 10, 10, 10, 10, 10, 10, 10, 10, 10, 15 };
             foreach (var i in Enumerable.Range(0, headers.Length))
             {
                 sheet.Column(i + 1).Width = widths[i];

@@ -8,7 +8,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Interfaces
 {
     public interface IGarmentStockReportFacade
     {
-        Tuple<List<GarmentStockReportViewModel>, int> GetStockReport(int offset, string unitcode, string tipebarang, int page, int size, string Order, DateTime? dateFrom, DateTime? dateTo);
-        MemoryStream GenerateExcelStockReport(string ctg, string unitcode, DateTime? datefrom, DateTime? dateto, int offset);
+        Tuple<List<GarmentStockReportViewModel>, int> GetStockReport(int offset, string unitcode, string tipebarang, int page, int size, string Order, DateTime? dateFrom, DateTime? dateTo, string suppliertype, string customstype);
+        MemoryStream GenerateExcelStockReport(string ctg, string unitcode, DateTime? datefrom, DateTime? dateto, int offset, string suppliertype, string customstype);
     }
 }
