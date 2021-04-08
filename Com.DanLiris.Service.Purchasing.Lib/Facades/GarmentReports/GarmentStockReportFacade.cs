@@ -37,10 +37,12 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
                           join f in dbContext.GarmentInternalPurchaseOrders on b.POId equals f.Id
                           join e in dbContext.GarmentReceiptCorrectionItems on b.Id equals e.URNItemId into RC
                           from ty in RC.DefaultIfEmpty()
+
                           join x in dbContext.GarmentUnitDeliveryOrderItems on b.Id equals x.URNItemId into GUDI
                           from xx in GUDI.DefaultIfEmpty()
                           join y in dbContext.GarmentUnitDeliveryOrders on xx.UnitDOId equals y.Id into GUD
                           from yy in GUD.DefaultIfEmpty()
+
                           join c in dbContext.GarmentUnitExpenditureNoteItems on xx.Id equals c.UnitDOItemId into UE
                           from ww in UE.DefaultIfEmpty()
                           join r in dbContext.GarmentUnitExpenditureNotes on ww.UENId equals r.Id into UEN
@@ -113,10 +115,12 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
                           //join f in SaldoAwal on b.POId equals f.POID
                           join e in dbContext.GarmentReceiptCorrectionItems on b.Id equals e.URNItemId into RC
                           from ty in RC.DefaultIfEmpty()
+
                           join x in dbContext.GarmentUnitDeliveryOrderItems on b.Id equals x.URNItemId into GUDI
                           from xx in GUDI.DefaultIfEmpty()
                           join y in dbContext.GarmentUnitDeliveryOrders on xx.UnitDOId equals y.Id into GUD
                           from yy in GUD.DefaultIfEmpty()
+
                           join c in dbContext.GarmentUnitExpenditureNoteItems on xx.Id equals c.UnitDOItemId into UE
                           from ww in UE.DefaultIfEmpty()
                           join r in dbContext.GarmentUnitExpenditureNotes on ww.UENId equals r.Id into UEN

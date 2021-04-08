@@ -33,15 +33,15 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
             #region Header
 
 
-            string formString = "FM-00-AD-09-006B/R1";
-            Paragraph form = new Paragraph(formString, bold_font) { Alignment = Element.ALIGN_RIGHT };
-            document.Add(form);
+            //string formString = "FM-00-AD-09-006B/R1";
+            //Paragraph form = new Paragraph(formString, bold_font) { Alignment = Element.ALIGN_RIGHT };
+            //document.Add(form);
 
             string titleString = "BON PENGELUARAN BARANG";
             Paragraph title = new Paragraph(titleString, header_font) { Alignment = Element.ALIGN_CENTER };
             document.Add(title);
 
-            string companyNameString = "PT DAN LIRIS";
+            string companyNameString = "PT AMBASSADOR GARMINDO";
             Paragraph companyName = new Paragraph(companyNameString, bold_font) { Alignment = Element.ALIGN_LEFT };
             document.Add(companyName);
 
@@ -49,9 +49,9 @@ namespace Com.DanLiris.Service.Purchasing.Lib.PDFTemplates
             Paragraph companyAddress = new Paragraph(companyAddressString, bold_font) { Alignment = Element.ALIGN_LEFT };
             document.Add(companyAddress);
 
-            string companyPostalCodeString = "PO. Box. 166 Solo - 57100 Indonesia";
-            Paragraph companyPostalCode = new Paragraph(companyPostalCodeString, bold_font) { Alignment = Element.ALIGN_LEFT };
-            document.Add(companyPostalCode);
+            //string companyPostalCodeString = "PO. Box. 166 Solo - 57100 Indonesia";
+            //Paragraph companyPostalCode = new Paragraph(companyPostalCodeString, bold_font) { Alignment = Element.ALIGN_LEFT };
+            //document.Add(companyPostalCode);
 
             #endregion
 
