@@ -646,6 +646,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentExternalPurchaseOrd
                     Id = s.Id,
                     UId = s.UId,
                     EPONo = s.EPONo,
+                    CustomsCategory = s.CustomsCategory,
                     OrderDate = s.OrderDate,
                     DeliveryDate = s.DeliveryDate,
                     SupplierName = s.SupplierName,

@@ -373,6 +373,7 @@ namespace Com.DanLiris.Service.Purchasing.WebApi.Controllers.v1.GarmentExternalP
                     {
                         s.Id,
                         s.EPONo,
+                        s.CustomsCategory,
                         s.OrderDate,
                         s.DeliveryDate,
                         s.Supplier,

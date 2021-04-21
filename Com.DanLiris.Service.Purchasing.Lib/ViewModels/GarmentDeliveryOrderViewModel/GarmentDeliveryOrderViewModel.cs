@@ -86,14 +86,22 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentDeliveryOrderVie
             {
                 yield return new ValidationResult("PurchaseOrderExternal is required", new List<string> { "itemscount" });
             }
+
             else
             {
+                string customsCategory = items[0].purchaseOrderExternal.customsCategory;
+
                 string itemError = "[";
 
                 foreach (var item in items)
                 {
                     itemError += "{";
 
+                    if(item.purchaseOrderExternal.customsCategory != customsCategory)
+                    {
+                        itemErrorCount++;
+                        itemError += "purchaseOrderExternal: 'Jenis Pembelian Tidak Boleh Berbeda', ";
+                    }
                     if (item.purchaseOrderExternal == null || item.purchaseOrderExternal.Id == 0)
                     {
                         itemErrorCount++;

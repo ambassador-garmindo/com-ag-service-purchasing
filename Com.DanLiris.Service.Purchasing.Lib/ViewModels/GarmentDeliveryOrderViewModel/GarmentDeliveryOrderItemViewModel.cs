@@ -19,5 +19,6 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentDeliveryOrderVie
     {
         public long Id { get; set; }
         public string no { get; set; }
+        public string customsCategory { get; set; }
     }
 }
