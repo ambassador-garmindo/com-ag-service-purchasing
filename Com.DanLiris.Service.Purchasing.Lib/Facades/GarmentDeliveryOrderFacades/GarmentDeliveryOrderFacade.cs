@@ -500,7 +500,6 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                 }
 
                 Query = _gdo.AsQueryable();
-                //.Where(s => s.IsInvoice == false && s.CustomsId != 0);
             }
 
             return Query;
@@ -540,34 +539,37 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                 .Where(s => s.CustomsId == 0 && s.IsInvoice == false
                     && (DOCurrencyCodes.Count() == 0 || DOCurrencyCodes.Contains(s.DOCurrencyCode))
                     && (SupplierIds.Count() == 0 || SupplierIds.Contains(s.SupplierId))
+                    && s.Items.Any( x => x.CustomsCategory == "IMPORT FASILITAS" || x.CustomsCategory == "LOKAL FASILITAS")
                     );
             //}
 
-            var gdo = Query.ToList();
-            var _gdo = new List<GarmentDeliveryOrder>();
+            //var gdo = Query.ToList();
+            //var _gdo = new List<GarmentDeliveryOrder>();
 
+            //foreach (var a in gdo)
+            //{
+            //    bool check = false;
+            //    GarmentDeliveryOrder deliveryOrder = a;
+            //    deliveryOrder.Items.Clear();
 
-            foreach (var a in gdo)
-            {
-                bool check = false;
+            //    foreach (var b in a.Items)
+            //    {
+            //        var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
+            //        if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
+            //        {
+            //            deliveryOrder.Items.Add(b);
+            //            check = true;
+            //            //break;
+            //        }
+            //    }
 
-                foreach (var b in a.Items)
-                {
-                    var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
-                    if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
-                    {
-                        check = true;
-                        break;   
-                    }
-                }
+            //    if (check)
+            //    {
+            //        _gdo.Add(deliveryOrder);
+            //    }
+            //}
 
-                if (check)
-                {
-                    _gdo.Add(a);
-                }
-            }
-
-            Query = _gdo.AsQueryable();
+            //Query = gdo.AsQueryable();
 
             return Query;
         }
@@ -644,6 +646,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                     {
                         Id = i.Id,
                         EPONo = i.EPONo,
+                        CustomsCategory = i.CustomsCategory,
                         Details = i.Details.Where(d => d.ReceiptQuantity == 0 && (string.IsNullOrWhiteSpace(filterUnitId) ? true : d.UnitId == filterUnitId)).ToList()
                     }).ToList()
                 });
@@ -708,7 +711,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                             d.Id,
 
                             d.ePOItemId,
-                            
+
                             d.pRId,
                             d.pRNo,
                             d.pRItemId,
@@ -716,8 +719,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                             d.pOId,
                             d.pOItemId,
                             d.poSerialNumber,
-                            customsCategory = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo == i.purchaseOrderExternal.no).Select(m => m.CustomsCategory).FirstOrDefault(),
-
+                            customsCategory = i.purchaseOrderExternal.customsCategory,
                             d.product,
                             productRemark = dbContext.GarmentExternalPurchaseOrderItems.Where(m => m.Id == d.ePOItemId).Select(m => m.Remark).FirstOrDefault(),
 
@@ -763,11 +765,13 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
             Query = QueryHelper<GarmentDeliveryOrder>.ConfigureFilter(Query, FilterDictionary);
 
             Query = Query
-                .Where(m => m.CustomsId != 0 && m.Items.Any(i => i.Details.Any(d => d.ReceiptQuantity > 0)))
+                //.Where(m => m.CustomsId != 0 && m.Items.Any(i => i.Details.Any(d => d.ReceiptQuantity > 0)))
+                .Where(m => m.Items.Any(i => i.Details.Any(d => d.ReceiptQuantity > 0)))
                 .Select(m => new GarmentDeliveryOrder
                 {
                     Id = m.Id,
                     DONo = m.DONo,
+                    CustomsId = m.CustomsId,
                     BillNo = m.BillNo,
                     IsInvoice = m.IsInvoice,
                     UseIncomeTax = m.UseIncomeTax,
@@ -787,12 +791,46 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                         Id = i.Id,
                         EPOId = i.EPOId,
                         EPONo = i.EPONo,
+                        CustomsCategory = i.CustomsCategory,
                         Details = i.Details.Where(d => d.ReceiptQuantity > 0).ToList()
                     }).ToList()
                 });
 
             Dictionary<string, string> OrderDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Order);
             Query = QueryHelper<GarmentDeliveryOrder>.ConfigureOrder(Query, OrderDictionary);
+
+            var gdo = Query.ToList();
+            var _gdo = new List<GarmentDeliveryOrder>();
+
+            foreach (var a in gdo)
+            {
+                bool check = false;
+
+                foreach (var b in a.Items)
+                {
+                    var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
+                    if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
+                    {
+                        if (a.CustomsId != 0)
+                        {
+                            check = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        check = true;
+                        break;
+                    }
+                }
+
+                if (check)
+                {
+                    _gdo.Add(a);
+                }
+            }
+
+            Query = _gdo.AsQueryable();
 
             Pageable<GarmentDeliveryOrder> pageable = new Pageable<GarmentDeliveryOrder>(Query, Page - 1, Size);
             List<GarmentDeliveryOrder> DataModel = pageable.Data.ToList();
@@ -825,10 +863,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
 
                             d.pRId,
                             d.pRNo,
-
+                            
                             d.pOId,
                             d.poSerialNumber,
-
+                            customsCategory = i.purchaseOrderExternal.customsCategory,
                             d.product,
 
                             d.rONo,

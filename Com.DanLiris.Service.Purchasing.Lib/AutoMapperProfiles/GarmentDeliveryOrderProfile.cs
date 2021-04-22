@@ -58,6 +58,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.AutoMapperProfiles
                 .ForMember(d => d._id, opt => opt.MapFrom(s => s.Id))
                 .ForPath(d => d.purchaseOrderExternal.Id, opt => opt.MapFrom(s => s.EPOId))
                 .ForPath(d => d.purchaseOrderExternal.no, opt => opt.MapFrom(s => s.EPONo))
+                .ForPath(d => d.purchaseOrderExternal.customsCategory, opt => opt.MapFrom(s => s.CustomsCategory))
 
                 .ForPath(d => d.currency.Id, opt => opt.MapFrom(s => s.CurrencyId))
                 .ForPath(d => d.currency.Code, opt => opt.MapFrom(s => s.CurrencyCode))
