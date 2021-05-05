@@ -93,11 +93,10 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentBeacukaiFacade
 			else
 			{
 				counterId = 1;
-
 			}
+
 			BillNo = "BP" + formatDate + counterId.ToString("D6");
 			return BillNo;
-
 		}
 
 		public (string format, int counterId) GeneratePaymentBillNo()
@@ -142,22 +141,19 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentBeacukaiFacade
 			{
 				try
 				{
-
 					EntityExtension.FlagForCreate(model, username, USER_AGENT);
 
                     var lastPaymentBill = GeneratePaymentBillNo();
 
 					foreach (GarmentBeacukaiItem item in model.Items)
 					{
-						GarmentDeliveryOrder deliveryOrder = dbSetDeliveryOrder.Include(m => m.Items)
-															.ThenInclude(i => i.Details).FirstOrDefault(s => s.Id == item.GarmentDOId);
+						GarmentDeliveryOrder deliveryOrder = dbSetDeliveryOrder.Include(m => m.Items).ThenInclude(i => i.Details).FirstOrDefault(s => s.Id == item.GarmentDOId);
+
 						if (deliveryOrder != null)
 						{
-							
 							if (model.BillNo == "" | model.BillNo == null)
 							{
 								deliveryOrder.BillNo = GenerateBillNo();
-
 							}
 							else
 							{
@@ -184,8 +180,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentBeacukaiFacade
 					transaction.Commit();
 					foreach (GarmentBeacukaiItem item in model.Items)
 					{
-						GarmentDeliveryOrder deliveryOrder = dbSetDeliveryOrder.Include(m => m.Items)
-															.ThenInclude(i => i.Details).FirstOrDefault(s => s.Id == item.GarmentDOId);
+						GarmentDeliveryOrder deliveryOrder = dbSetDeliveryOrder.Include(m => m.Items).ThenInclude(i => i.Details).FirstOrDefault(s => s.Id == item.GarmentDOId);
 						if (deliveryOrder != null)
 						{
 							deliveryOrder.CustomsId = model.Id;

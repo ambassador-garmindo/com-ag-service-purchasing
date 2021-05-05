@@ -442,6 +442,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
         {
             IQueryable<GarmentDeliveryOrder> Query = this.dbSet;
 
+            var customs = new []{ "IMPORT FASILITAS", "LOKAL FASILITAS", "IMPORT NONFASILITAS" };
+
             List<string> searchAttributes = new List<string>()
             {
                 "DONo"
@@ -478,7 +480,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                     foreach (var b in a.Items)
                     {
                         var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
-                        if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
+                        //if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
+                        if (customs.Contains(epo.CustomsCategory))
                         {
                             if(a.CustomsId != 0)
                             {
@@ -508,6 +511,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
         public IQueryable<GarmentDeliveryOrder> DOForCustoms(string Keyword, string Filter, string BillNo = null)
         {
             IQueryable<GarmentDeliveryOrder> Query = this.dbSet;
+
+            var customs = new[] { "IMPORT FASILITAS", "LOKAL FASILITAS", "IMPORT NONFASILITAS" };
 
             List<string> searchAttributes = new List<string>()
             {
@@ -539,8 +544,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                 .Where(s => s.CustomsId == 0 && s.IsInvoice == false
                     && (DOCurrencyCodes.Count() == 0 || DOCurrencyCodes.Contains(s.DOCurrencyCode))
                     && (SupplierIds.Count() == 0 || SupplierIds.Contains(s.SupplierId))
-                    && s.Items.Any( x => x.CustomsCategory == "IMPORT FASILITAS" || x.CustomsCategory == "LOKAL FASILITAS")
-                    );
+                    && s.Items.Any(x => customs.Contains(x.CustomsCategory)));
+                    //x.CustomsCategory == "IMPORT FASILITAS" || x.CustomsCategory == "IMPORT NONFASILITAS" || x.CustomsCategory == "LOKAL FASILITAS"));
             //}
 
             //var gdo = Query.ToList();
@@ -549,23 +554,20 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
             //foreach (var a in gdo)
             //{
             //    bool check = false;
-            //    GarmentDeliveryOrder deliveryOrder = a;
-            //    deliveryOrder.Items.Clear();
-
+            //     
             //    foreach (var b in a.Items)
             //    {
             //        var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
             //        if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
             //        {
-            //            deliveryOrder.Items.Add(b);
             //            check = true;
-            //            //break;
+            //            break;
             //        }
             //    }
 
             //    if (check)
             //    {
-            //        _gdo.Add(deliveryOrder);
+            //        _gdo.Add(a);
             //    }
             //}
 
@@ -628,6 +630,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
         {
             Dictionary<string, string> FilterDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Filter);
 
+            var customs = new[] { "IMPORT FASILITAS", "LOKAL FASILITAS", "IMPORT NONFASILITAS" };
+
             long filterSupplierId = FilterDictionary.ContainsKey("SupplierId") ? long.Parse(FilterDictionary["SupplierId"]) : 0;
             FilterDictionary.Remove("SupplierId");
 
@@ -663,7 +667,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                 foreach (var b in a.Items)
                 {
                     var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
-                    if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
+                    //if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
+                    if(customs.Contains(epo.CustomsCategory))
                     {
                         if (a.CustomsId != 0)
                         {
@@ -754,6 +759,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
         {
             Dictionary<string, string> FilterDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Filter);
 
+            var customs = new[] { "IMPORT FASILITAS", "LOKAL FASILITAS", "IMPORT NONFASILITAS" };
 
             IQueryable<GarmentDeliveryOrder> Query = dbSet;
             List<string> searchAttributes = new List<string>()
@@ -809,7 +815,8 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                 foreach (var b in a.Items)
                 {
                     var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
-                    if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
+                    //if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
+                    if(customs.Contains(epo.CustomsCategory))
                     {
                         if (a.CustomsId != 0)
                         {

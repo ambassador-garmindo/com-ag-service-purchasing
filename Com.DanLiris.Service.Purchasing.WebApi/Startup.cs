@@ -184,7 +184,8 @@ namespace Com.DanLiris.Service.Purchasing.WebApi
                 .AddTransient<IBalanceDebtFacade, GarmentSupplierBalanceDebtFacade>()
                 .AddTransient<IDebtCardReportFacade, DebtCardReportFacade>()
                 .AddTransient<IVBRequestPOExternalService, VBRequestPOExternalService>()
-                .AddTransient<IGarmentStockOpnameFacade, GarmentStockOpnameFacade>();
+                .AddTransient<IGarmentStockOpnameFacade, GarmentStockOpnameFacade>()
+                .AddTransient<IMutationBeacukaiFacade, MutationBeacukaiFacade>();
         }
 
         private void RegisterServices(IServiceCollection services, bool isTest)
