@@ -21,6 +21,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Models.GarmentUnitExpenditureNoteM
         public long PRItemId { get; set; }
         [MaxLength(255)]
         public string POSerialNumber { get; set; }
+        public string CustomsCategory { get; set; }
 
         public long ProductId { get; set; }
         [MaxLength(255)]

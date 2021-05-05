@@ -16,6 +16,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.ViewModels.GarmentUnitExpenditureN
         public long POItemId { get; set; }
         public long PRItemId { get; set; }
         public string POSerialNumber { get; set; }
+        public string CustomsCategory { get; set; }
         public long ProductId { get; set; }
         public string ProductCode { get; set; }
         public string ProductName { get; set; }
