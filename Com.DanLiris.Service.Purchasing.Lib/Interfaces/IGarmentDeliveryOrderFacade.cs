@@ -26,6 +26,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Interfaces
         ReadResponse<object> ReadForUnitReceiptNote(int Page = 1, int Size = 10, string Order = "{}", string Keyword = null, string Filter = "{}");
 
         ReadResponse<object> ReadForCorrectionNoteQuantity(int Page = 1, int Size = 10, string Order = "{}", string Keyword = null, string Filter = "{}");
+        ReadResponse<object> ReadForCorrectionNotePrice(int Page = 1, int Size = 10, string Order = "{}", string Keyword = null, string Filter = "{}");
 
         IQueryable<AccuracyOfArrivalReportViewModel> GetReportQuery(string category, DateTime? dateFrom, DateTime? dateTo, int offset);
         Tuple<List<AccuracyOfArrivalReportViewModel>, int> GetReportHeaderAccuracyofArrival(string category, DateTime? dateFrom, DateTime? dateTo, int offset);

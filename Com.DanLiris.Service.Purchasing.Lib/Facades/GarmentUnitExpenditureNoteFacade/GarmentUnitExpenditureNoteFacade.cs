@@ -1318,6 +1318,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitExpenditureNote
                         DODetailId = i.DODetailId,
                         POItemId = i.POItemId,
                         POSerialNumber = i.POSerialNumber,
+                        CustomsCategory = i.CustomsCategory,
                         PricePerDealUnit = i.PricePerDealUnit,
                         Quantity = i.Quantity,
                         RONo = i.RONo,
@@ -1376,6 +1377,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentUnitExpenditureNote
                         i.POItemId,
                         i.PRItemId,
                         i.POSerialNumber,
+                        i.CustomsCategory,
 
                         i.ProductId,
                         i.ProductCode,
