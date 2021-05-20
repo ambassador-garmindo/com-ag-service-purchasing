@@ -92,7 +92,7 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
                                           ExpenditureType = a.ExpenditureType,
                                           ExpenditureProcessQty = (a.ExpenditureType == "PROSES" ? b.Quantity : 0),
                                           ExpenditureSubconQty = (a.ExpenditureType == "SUBCON" ? b.Quantity : 0),
-                                          SubconProvider = (a.ExpenditureType == "SUBCON" ? "SUBCON" : "")
+                                          SubconProvider = (a.ExpenditureType == "SUBCON" ? "SUBCON" : "-")
                                     }).ToList();            
 
             return Expenditure;
