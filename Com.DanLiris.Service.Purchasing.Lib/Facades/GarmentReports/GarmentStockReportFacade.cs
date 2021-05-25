@@ -13,6 +13,7 @@ using OfficeOpenXml.Style;
 using Com.DanLiris.Service.Purchasing.Lib.ViewModels.NewIntegrationViewModel;
 using Com.DanLiris.Service.Purchasing.Lib.Helpers;
 using Newtonsoft.Json;
+using System.Globalization;
 
 namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
 {
@@ -823,84 +824,131 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
 
         public MemoryStream GenerateExcelStockReport(string ctg, string unitcode, DateTime? datefrom, DateTime? dateto, int offset, string suppliertype, string customstype)
         {
+            var categoryname = (ctg == "BB" ? "BAHAN BAKU" : (ctg == "BE" ? "BAHAN EMBALANCE" : "BAHAN PENDUKUNG"));
+
             var data = GetStockQuery(ctg, unitcode, datefrom, dateto, offset, suppliertype, customstype);
             var Query = data.OrderByDescending(x => x.ProductCode).ThenBy(x => x.ProductName).ToList();
+
             DataTable result = new DataTable();
             var headers = new string[] { "No", "Kode Barang", "No RO", "Plan PO", "Jenis Pembelian", "Artikel", "Nama Barang", "Keterangan Barang", "Buyer", "Saldo Awal", "Saldo Awal2", "Penerimaan", "Penerimaan1", "Penerimaan2", "Pengeluaran", "Pengeluaran1", "Saldo Akhir", "Saldo Akhir1", "Asal" }; 
             var subheaders = new string[] { "Jumlah", "Sat", "Jumlah", "Koreksi", "Sat", "Jumlah", "Sat", "Jumlah", "Sat" };
-            for (int i = 0; i < headers.Length; i++)
+            for (int i = 0; i < 9; i++)
             {
                 result.Columns.Add(new DataColumn() { ColumnName = headers[i], DataType = typeof(string) });
             }
+
+            result.Columns.Add(new DataColumn() { ColumnName = headers[9], DataType = typeof(Double) });
+            result.Columns.Add(new DataColumn() { ColumnName = headers[10], DataType = typeof(string) });
+            result.Columns.Add(new DataColumn() { ColumnName = headers[11], DataType = typeof(Double) });
+            result.Columns.Add(new DataColumn() { ColumnName = headers[12], DataType = typeof(Double) });
+            result.Columns.Add(new DataColumn() { ColumnName = headers[13], DataType = typeof(string) });
+            result.Columns.Add(new DataColumn() { ColumnName = headers[14], DataType = typeof(Double) });
+            result.Columns.Add(new DataColumn() { ColumnName = headers[15], DataType = typeof(string) });
+            result.Columns.Add(new DataColumn() { ColumnName = headers[16], DataType = typeof(Double) });
+            result.Columns.Add(new DataColumn() { ColumnName = headers[17], DataType = typeof(string) });
+            result.Columns.Add(new DataColumn() { ColumnName = headers[18], DataType = typeof(string) });
+
             var index = 1;
+            decimal BeginningQtyTotal = 0;
+            decimal ReceiptQtyTotal = 0;
+            decimal CorrQtyTotal = 0;
+            double ExpendQtyTotal = 0;
+            decimal EndingQtyTotal = 0;
+
             foreach (var item in Query)
             {
-
-                //result.Rows.Add(index++, item.ProductCode, item.RO, item.PlanPo, item.NoArticle, item.ProductName, item.Information, item.Buyer,
-
-                //    item.BeginningBalanceQty, item.BeginningBalanceUom, item.ReceiptQty, item.ReceiptCorrectionQty, item.ReceiptUom,
-                //    NumberFormat(item.ExpendQty),
-                //    item.ExpandUom, item.EndingBalanceQty, item.EndingUom, item.From);
-
+                BeginningQtyTotal += item.BeginningBalanceQty;
+                ReceiptQtyTotal += item.ReceiptQty;
+                ExpendQtyTotal += item.ExpendQty;
+                EndingQtyTotal += item.EndingBalanceQty;
+                CorrQtyTotal += item.ReceiptCorrectionQty;
 
                 result.Rows.Add(index++, item.ProductCode, item.RO, item.PlanPo, item.CustomsCategory, item.NoArticle, item.ProductName, item.ProductRemark, item.Buyer,
-
-                    Convert.ToDouble(item.BeginningBalanceQty), item.BeginningBalanceUom, Convert.ToDouble(item.ReceiptQty), Convert.ToDouble(item.ReceiptCorrectionQty), item.ReceiptUom,
-                    item.ExpendQty,
-                    item.ExpandUom, Convert.ToDouble(item.EndingBalanceQty), item.EndingUom,
-                    item.PaymentMethod == "FREE FROM BUYER" || item.PaymentMethod == "CMT" || item.PaymentMethod == "CMT/IMPORT" ? "BY" : "BL");
-
+                Convert.ToDouble(item.BeginningBalanceQty), item.BeginningBalanceUom, Convert.ToDouble(item.ReceiptQty), Convert.ToDouble(item.ReceiptCorrectionQty), item.ReceiptUom,
+                item.ExpendQty, item.ExpandUom, Convert.ToDouble(item.EndingBalanceQty), item.EndingUom,
+                item.PaymentMethod == "FREE FROM BUYER" || item.PaymentMethod == "CMT" || item.PaymentMethod == "CMT/IMPORT" ? "BY" : "BL");
             }
 
             ExcelPackage package = new ExcelPackage();
             var sheet = package.Workbook.Worksheets.Add("Data");
 
-            sheet.Cells["A3"].LoadFromDataTable(result, false, OfficeOpenXml.Table.TableStyles.Light16);
-            sheet.Cells["J1"].Value = headers[8];
-            sheet.Cells["J1:K1"].Merge = true;
+            var col = (char)('A' + result.Columns.Count);
+            string tglawal = new DateTimeOffset(datefrom.Value).ToOffset(new TimeSpan(offset, 0, 0)).ToString("dd MMM yyyy", new CultureInfo("id-ID"));
+            string tglakhir = new DateTimeOffset(dateto.Value).ToOffset(new TimeSpan(offset, 0, 0)).ToString("dd MMM yyyy", new CultureInfo("id-ID"));
+            sheet.Cells[$"A1:{col}1"].Value = string.Format("LAPORAN STOCK GUDANG {0}", categoryname);
+            sheet.Cells[$"A1:{col}1"].Merge = true;
+            sheet.Cells[$"A1:{col}1"].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+            sheet.Cells[$"A1:{col}1"].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+            sheet.Cells[$"A1:{col}1"].Style.Font.Bold = true;
+            sheet.Cells[$"A2:{col}2"].Value = string.Format("Periode {0} - {1}", tglawal, tglakhir);
+            sheet.Cells[$"A2:{col}2"].Merge = true;
+            sheet.Cells[$"A2:{col}2"].Style.Font.Bold = true;
+            sheet.Cells[$"A2:{col}2"].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+            sheet.Cells[$"A2:{col}2"].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+            sheet.Cells[$"A3:{col}3"].Value = string.Format("Unit : {0}", unitcode);
+            sheet.Cells[$"A3:{col}3"].Merge = true;
+            sheet.Cells[$"A3:{col}3"].Style.Font.Bold = true;
+            sheet.Cells[$"A3:{col}3"].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+            sheet.Cells[$"A3:{col}3"].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
 
-            sheet.Cells["L1"].Value = headers[10];
-            sheet.Cells["L1:N1"].Merge = true;
-            sheet.Cells["O1"].Value = headers[13];
-            sheet.Cells["O1:P1"].Merge = true;
-            sheet.Cells["Q1"].Value = headers[15];
-            sheet.Cells["Q1:R1"].Merge = true;
+            sheet.Cells["A7"].LoadFromDataTable(result, false, OfficeOpenXml.Table.TableStyles.Light16);
+            sheet.Cells["J5"].Value = headers[9];
+            sheet.Cells["J5:K5"].Merge = true;
 
-            foreach (var i in Enumerable.Range(0, 8))
+            sheet.Cells["L5"].Value = headers[11];
+            sheet.Cells["L5:N5"].Merge = true;
+            sheet.Cells["O5"].Value = headers[14];
+            sheet.Cells["O5:P5"].Merge = true;
+            sheet.Cells["Q5"].Value = headers[16];
+            sheet.Cells["Q5:R5"].Merge = true;
+
+            foreach (var i in Enumerable.Range(0, 9))
             {
-                var col = (char)('A' + i);
-                sheet.Cells[$"{col}1"].Value = headers[i];
-                sheet.Cells[$"{col}1:{col}2"].Merge = true;
+                col = (char)('A' + i);
+                sheet.Cells[$"{col}5"].Value = headers[i];
+                sheet.Cells[$"{col}5:{col}6"].Merge = true;
             }
 
             for (var i = 0; i < 9; i++)
             {
-                var col = (char)('J' + i);
-                sheet.Cells[$"{col}2"].Value = subheaders[i];
-
+                col = (char)('J' + i);
+                sheet.Cells[$"{col}6"].Value = subheaders[i];
             }
 
             foreach (var i in Enumerable.Range(0, 1))
             {
-                var col = (char)('S' + i);
-                sheet.Cells[$"{col}1"].Value = headers[i + 18];
-                sheet.Cells[$"{col}1:{col}2"].Merge = true;
+                col = (char)('S' + i);
+                sheet.Cells[$"{col}5"].Value = headers[i + 18];
+                sheet.Cells[$"{col}5:{col}6"].Merge = true;
             }
 
-            sheet.Cells["A1:S2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            sheet.Cells["A1:S2"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
-            sheet.Cells["A1:S2"].Style.Font.Bold = true;
+            sheet.Cells["A5:S6"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            sheet.Cells["A5:S6"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            sheet.Cells["A5:S6"].Style.Font.Bold = true;
             var widths = new int[] {10, 15, 15, 20, 20 , 20, 15, 20, 15, 10, 10, 10, 10, 10, 10, 10, 10, 10, 15 };
             foreach (var i in Enumerable.Range(0, headers.Length))
             {
                 sheet.Column(i + 1).Width = widths[i];
             }
 
+            sheet.Column(5).Hidden = true;
+
+            var a = Query.Count();
+
+            sheet.Cells[$"A{8 + a}"].Value = "T O T A L  . . . . . . . . . . . . . . .";
+            sheet.Cells[$"A{8 + a}:G{8 + a}"].Merge = true;
+            sheet.Cells[$"A{8 + a}:G{8 + a}"].Style.Font.Bold = true;
+            sheet.Cells[$"A{8 + a}:G{8 + a}"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            sheet.Cells[$"A{8 + a}:G{8 + a}"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            sheet.Cells[$"H{8 + a}"].Value = BeginningQtyTotal;
+            sheet.Cells[$"J{8 + a}"].Value = ReceiptQtyTotal;
+            sheet.Cells[$"K{8 + a}"].Value = CorrQtyTotal;
+            sheet.Cells[$"M{8 + a}"].Value = ExpendQtyTotal;
+            sheet.Cells[$"O{8 + a}"].Value = EndingQtyTotal;
+
             MemoryStream stream = new MemoryStream();
             package.SaveAs(stream);
             return stream;
-
-
         }
 
         String NumberFormat(double? numb)

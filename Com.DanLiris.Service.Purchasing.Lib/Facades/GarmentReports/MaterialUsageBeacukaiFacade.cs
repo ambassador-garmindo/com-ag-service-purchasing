@@ -6,9 +6,12 @@ using Com.DanLiris.Service.Purchasing.Lib.ViewModels.NewIntegrationViewModel;
 using Com.Moonlay.NetCore.Lib;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using OfficeOpenXml;
+using OfficeOpenXml.Style;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -100,32 +103,106 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentReports
 
         public MemoryStream GenerateExcelUsageBBCentral(DateTime? dateFrom, DateTime? dateTo, int offset)
         {
-            //var Query = GetCentralItemUsageBBReport(dateFrom, dateTo, offset);
-            ////Query = Query.OrderBy(b => b.ItemCode).ToList();
-            //DataTable result = new DataTable();
-            //result.Columns.Add(new DataColumn() { ColumnName = "Kode Barang", DataType = typeof(String) });
-            //result.Columns.Add(new DataColumn() { ColumnName = "Nama Barang", DataType = typeof(String) });
-            //result.Columns.Add(new DataColumn() { ColumnName = "Tipe", DataType = typeof(String) });
-            //result.Columns.Add(new DataColumn() { ColumnName = "Satuan", DataType = typeof(String) });
-            //result.Columns.Add(new DataColumn() { ColumnName = "Saldo Awal", DataType = typeof(Double) });
-            //result.Columns.Add(new DataColumn() { ColumnName = "Pemasukan", DataType = typeof(Double) });
-            //result.Columns.Add(new DataColumn() { ColumnName = "Pengeluaran", DataType = typeof(Double) });
-            //result.Columns.Add(new DataColumn() { ColumnName = "Penyesuaian", DataType = typeof(Double) });
-            //result.Columns.Add(new DataColumn() { ColumnName = "Saldo Akhir", DataType = typeof(Double) });
-            //result.Columns.Add(new DataColumn() { ColumnName = "Stock Opname", DataType = typeof(Double) });
-            //result.Columns.Add(new DataColumn() { ColumnName = "Selisih", DataType = typeof(Double) });
-            ////if (Query.ToArray().Count() == 0)
-            ////    result.Rows.Add("", "", "", "", "", "", "", "", "", "", ""); // to allow column name to be generated properly for empty data as template
-            ////else
-            //foreach (var item in Query)
-            //{
-            //    result.Rows.Add((item.ItemCode), item.ItemName, item.SupplierType, item.UnitQtyName, item.BeginQty, item.ReceiptQty, item.ExpenditureQty, item.AdjustmentQty, item.LastQty, item.OpnameQty, item.Diff);
-            //}
+            var data = GetCentralItemUsageBBReport(dateFrom, dateTo, offset);
+            var Query = data.OrderByDescending(x => x.ItemCode).ThenBy(x => x.ItemName).ToList();
+            //Query = Query.OrderBy(b => b.ItemCode).ToList();
+            DataTable result = new DataTable();
 
-            //return Excel.CreateExcel(new List<KeyValuePair<DataTable, string>>() { new KeyValuePair<DataTable, string>(result, "Territory") }, true);
+            var headers = new string[] { "No", "Bukti Pengeluaran", "Bukti Pengeluaran1" , "Kode Barang", "Nama Barang", "Satuan", "Jumlah", "Jumlah1", "Penerima Subkontrak" };
+            var subheaders = new string[] { "Nomor", "Tanggal", "Digunakan", "Disubkontrakkan"};
 
-            return null;
+            for (int i = 0; i < 6; i++)
+            {
+                result.Columns.Add(new DataColumn() { ColumnName = headers[i], DataType = typeof(String) });
+            }
 
+            result.Columns.Add(new DataColumn() { ColumnName = headers[6], DataType = typeof(Double) });
+            result.Columns.Add(new DataColumn() { ColumnName = headers[7], DataType = typeof(Double) });
+            result.Columns.Add(new DataColumn() { ColumnName = headers[8], DataType = typeof(String) });
+
+            var index = 1;
+            double ProcessQtyTotal = 0;
+            double SubconQtyTotal = 0;
+            foreach (var item in Query)
+            {
+                ProcessQtyTotal += item.ExpenditureProcessQty;
+                SubconQtyTotal += item.ExpenditureSubconQty;
+
+                result.Rows.Add(index++, item.UENNo, item.UENDate.ToString("dd MMM yyyy", new CultureInfo("id-ID")), item.ItemCode, item.ItemName, item.UnitQtyName, Convert.ToDouble(item.ExpenditureProcessQty), Convert.ToDouble(item.ExpenditureSubconQty), item.SubconProvider);
+            }
+
+            ExcelPackage package = new ExcelPackage();
+            var sheet = package.Workbook.Worksheets.Add("Data");
+
+            var col = (char)('A' + result.Columns.Count);
+            string tglawal = new DateTimeOffset(dateFrom.Value).ToOffset(new TimeSpan(offset, 0, 0)).ToString("dd MMM yyyy", new CultureInfo("id-ID"));
+            string tglakhir = new DateTimeOffset(dateTo.Value).ToOffset(new TimeSpan(offset, 0, 0)).ToString("dd MMM yyyy", new CultureInfo("id-ID"));
+
+            sheet.Cells[$"A1:{col}1"].Value = string.Format("LAPORAN PEMAKAIAN BAHAN BAKU");
+            sheet.Cells[$"A1:{col}1"].Merge = true;
+            sheet.Cells[$"A1:{col}1"].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+            sheet.Cells[$"A1:{col}1"].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+            sheet.Cells[$"A1:{col}1"].Style.Font.Bold = true;
+
+            sheet.Cells[$"A2:{col}2"].Value = string.Format("Periode {0} - {1}", tglawal, tglakhir);
+            sheet.Cells[$"A2:{col}2"].Merge = true;
+            sheet.Cells[$"A2:{col}2"].Style.Font.Bold = true;
+            sheet.Cells[$"A2:{col}2"].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+            sheet.Cells[$"A2:{col}2"].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+
+            sheet.Cells["A7"].LoadFromDataTable(result, false, OfficeOpenXml.Table.TableStyles.Light16);
+
+            sheet.Cells["A5"].Value = headers[0];
+            sheet.Cells["A5:A6"].Merge = true;
+
+            sheet.Cells["B5"].Value = headers[1];
+            sheet.Cells["B5:C5"].Merge = true;
+
+            sheet.Cells["B6"].Value = subheaders[0];
+            sheet.Cells["C6"].Value = subheaders[1];
+
+            sheet.Cells["D5"].Value = headers[3];
+            sheet.Cells["D5:D6"].Merge = true;
+
+            sheet.Cells["E5"].Value = headers[4];
+            sheet.Cells["E5:E6"].Merge = true;
+
+            sheet.Cells["F5"].Value = headers[5];
+            sheet.Cells["F5:F6"].Merge = true;
+
+            sheet.Cells["G5"].Value = headers[6];
+            sheet.Cells["G5:H5"].Merge = true;
+
+            sheet.Cells["G6"].Value = subheaders[2];
+            sheet.Cells["H6"].Value = subheaders[3];
+
+            sheet.Cells["I5"].Value = headers[8];
+            sheet.Cells["I5:I6"].Merge = true;
+
+            sheet.Cells["A5:I6"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            sheet.Cells["A5:I6"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            sheet.Cells["A5:I6"].Style.Font.Bold = true;
+
+            var widths = new int[] { 10, 20, 20, 15, 15, 15, 20, 20, 20};
+
+            foreach (var i in Enumerable.Range(0, headers.Length))
+            {
+                sheet.Column(i + 1).Width = widths[i];
+            }
+
+            var a = Query.Count();
+
+            sheet.Cells[$"A{8 + a}"].Value = "T O T A L  . . . . . . . . . . . . . . .";
+            sheet.Cells[$"A{8 + a}:F{8 + a}"].Merge = true;
+            sheet.Cells[$"A{8 + a}:F{8 + a}"].Style.Font.Bold = true;
+            sheet.Cells[$"A{8 + a}:F{8 + a}"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            sheet.Cells[$"A{8 + a}:F{8 + a}"].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+            sheet.Cells[$"G{8 + a}"].Value = ProcessQtyTotal;
+            sheet.Cells[$"H{8 + a}"].Value = SubconQtyTotal;
+
+            MemoryStream stream = new MemoryStream();
+            package.SaveAs(stream);
+            return stream;
         }
         #endregion 
 
