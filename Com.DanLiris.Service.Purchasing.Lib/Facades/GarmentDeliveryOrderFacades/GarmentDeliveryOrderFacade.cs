@@ -815,7 +815,6 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                 foreach (var b in a.Items)
                 {
                     var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
-                    //if (epo.CustomsCategory.Equals("IMPORT FASILITAS") || epo.CustomsCategory.Equals("LOKAL FASILITAS"))
                     if(customs.Contains(epo.CustomsCategory))
                     {
                         if (a.CustomsId != 0)
@@ -871,6 +870,143 @@ namespace Com.DanLiris.Service.Purchasing.Lib.Facades.GarmentDeliveryOrderFacade
                             d.pRId,
                             d.pRNo,
                             
+                            d.pOId,
+                            d.poSerialNumber,
+                            customsCategory = i.purchaseOrderExternal.customsCategory,
+                            d.product,
+
+                            d.rONo,
+                            d.doQuantity,
+                            d.purchaseOrderUom,
+                            d.quantityCorrection,
+                            d.priceTotalCorrection,
+
+                            d.pricePerDealUnit,
+                            d.pricePerDealUnitCorrection,
+
+                            d.returQuantity,
+                            receiptCorrection = dbContext.GarmentUnitReceiptNoteItems.Where(m => m.DODetailId == d.Id && m.IsDeleted == false).Select(m => m.ReceiptCorrection).FirstOrDefault()
+                        }).ToList()
+                    }).ToList()
+                }).ToList()
+            );
+            return new ReadResponse<object>(listData, Total, OrderDictionary);
+        }
+
+        public ReadResponse<object> ReadForCorrectionNotePrice(int Page = 1, int Size = 25, string Order = "{}", string Keyword = null, string Filter = "{}")
+        {
+            Dictionary<string, string> FilterDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Filter);
+
+            var customs = new[] { "IMPORT FASILITAS", "LOKAL FASILITAS", "IMPORT NONFASILITAS" };
+
+            IQueryable<GarmentDeliveryOrder> Query = dbSet;
+            List<string> searchAttributes = new List<string>()
+            {
+                "DONo"
+            };
+
+            Query = QueryHelper<GarmentDeliveryOrder>.ConfigureSearch(Query, searchAttributes, Keyword);
+            Query = QueryHelper<GarmentDeliveryOrder>.ConfigureFilter(Query, FilterDictionary);
+
+            Query = Query
+                //.Where(m => m.CustomsId != 0 && m.Items.Any(i => i.Details.Any(d => d.ReceiptQuantity > 0)))
+                .Select(m => new GarmentDeliveryOrder
+                {
+                    Id = m.Id,
+                    DONo = m.DONo,
+                    CustomsId = m.CustomsId,
+                    BillNo = m.BillNo,
+                    IsInvoice = m.IsInvoice,
+                    UseIncomeTax = m.UseIncomeTax,
+                    SupplierName = m.SupplierName,
+                    SupplierId = m.SupplierId,
+                    SupplierCode = m.SupplierCode,
+                    DOCurrencyId = m.DOCurrencyId,
+                    DOCurrencyCode = m.DOCurrencyCode,
+                    UseVat = m.UseVat,
+                    IncomeTaxId = m.IncomeTaxId,
+                    IncomeTaxName = m.IncomeTaxName,
+                    IncomeTaxRate = m.IncomeTaxRate,
+                    LastModifiedUtc = m.LastModifiedUtc,
+                    DODate = m.DODate,
+                    Items = m.Items.Select(i => new GarmentDeliveryOrderItem
+                    {
+                        Id = i.Id,
+                        EPOId = i.EPOId,
+                        EPONo = i.EPONo,
+                        CustomsCategory = i.CustomsCategory,
+                        Details = i.Details.Select(j => j).ToList()
+                    }).ToList()
+                });
+
+            Dictionary<string, string> OrderDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(Order);
+            Query = QueryHelper<GarmentDeliveryOrder>.ConfigureOrder(Query, OrderDictionary);
+
+            var gdo = Query.ToList();
+            var _gdo = new List<GarmentDeliveryOrder>();
+
+            foreach (var a in gdo)
+            {
+                bool check = false;
+
+                foreach (var b in a.Items)
+                {
+                    var epo = dbContext.GarmentExternalPurchaseOrders.Where(m => m.EPONo.Equals(b.EPONo)).FirstOrDefault();
+                    if (customs.Contains(epo.CustomsCategory))
+                    {
+                        if (a.CustomsId != 0)
+                        {
+                            check = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        check = true;
+                        break;
+                    }
+                }
+
+                if (check)
+                {
+                    _gdo.Add(a);
+                }
+            }
+
+            Query = _gdo.AsQueryable();
+
+            Pageable<GarmentDeliveryOrder> pageable = new Pageable<GarmentDeliveryOrder>(Query, Page - 1, Size);
+            List<GarmentDeliveryOrder> DataModel = pageable.Data.ToList();
+            int Total = pageable.TotalCount;
+
+            List<GarmentDeliveryOrderViewModel> DataViewModel = mapper.Map<List<GarmentDeliveryOrderViewModel>>(DataModel);
+
+            List<dynamic> listData = new List<dynamic>();
+            listData.AddRange(
+                DataViewModel.Select(s => new
+                {
+                    s.Id,
+                    s.doNo,
+                    s.docurrency,
+                    s.supplier,
+                    s.useIncomeTax,
+                    s.billNo,
+                    s.isInvoice,
+                    s.useVat,
+                    s.incomeTax,
+                    s.LastModifiedUtc,
+                    s.doDate,
+                    items = s.items.Select(i => new
+                    {
+                        i.Id,
+                        i.purchaseOrderExternal,
+                        fulfillments = i.fulfillments.Select(d => new
+                        {
+                            d.Id,
+
+                            d.pRId,
+                            d.pRNo,
+
                             d.pOId,
                             d.poSerialNumber,
                             customsCategory = i.purchaseOrderExternal.customsCategory,
